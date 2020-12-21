@@ -56,11 +56,11 @@ int main()
 		// echos control character value otherwise ASCII and character value
 		if(iscntrl(c))
 		{
-			printf("%d\n",c);
+			printf("%d\r\n",c);
 		}
 		else
 		{
-			printf("%d ('%c')\n", c, c);
+			printf("%d ('%c')\r\n", c, c);
 		}
 	}
 
