@@ -1,12 +1,31 @@
+/*** include ***/
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
 #include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdbool.h>
 
+/*** globals ***/
+
 struct termios original_termios;
 
+/*** functions ***/
+
+/** 
+ * 	die
+ * 
+ * 	@param msg
+ *  
+ *	Print error message and kill program
+ */
+void die(const char *msg)
+{
+	perror(msg);
+	exit(1);
+}
 
 /** 
  * 	disableRawMode
@@ -17,7 +36,10 @@ struct termios original_termios;
  */
 void disableRawMode(void)
 {
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios);
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_termios) == -1)
+	{
+		die("tcsetattr");
+	}
 }
 
 /** 
@@ -31,7 +53,10 @@ void disableRawMode(void)
 void enableRawMode(void)
 {
 	// Saves default terminal settings
-	tcgetattr(STDIN_FILENO, &original_termios);
+	if(tcgetattr(STDIN_FILENO, &original_termios) == -1) 
+	{
+		die("tcgetattr");
+	}
 
 	// Call disableRawMode
 	atexit(disableRawMode);
@@ -45,8 +70,13 @@ void enableRawMode(void)
 	raw.c_cc[VMIN] = 0;
 	raw.c_cc[VTIME] = 1;
 
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1)
+	{
+		die("tcsetattr");
+	}
 }
+
+/*** main ***/
 
 int main() 
 {	
@@ -56,9 +86,12 @@ int main()
 	// infinite loop to read 1 from standard input
 	while (true)
 	{
-		c = '/0';
+		c = '\0';
 
-		read(STDIN_FILENO, &c, 1);
+		if(read(STDIN_FILENO, &c, 1) == -1)
+		{
+			die("read");
+		}
 
 		// echos control character value otherwise ASCII and character value
 		if(iscntrl(c))
