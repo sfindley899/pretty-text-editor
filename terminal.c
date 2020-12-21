@@ -37,7 +37,7 @@ void enableRawMode(void)
 
 	tcgetattr(STDIN_FILENO, &raw);
 
-	raw.c_lflag &= ~(ECHO);
+	raw.c_lflag &= ~(ECHO | ICANON);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
