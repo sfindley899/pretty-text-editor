@@ -8,6 +8,10 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+/*** macros ***/
+
+#define CTRL_KEY(k) ((k) & 0x1f)
+
 /*** globals ***/
 
 struct termios original_termios;
@@ -102,7 +106,7 @@ int main()
 		{
 			printf("%d ('%c')\r\n", c, c);
 		}
-		if (c == 'q') break;
+		if (c == CTRL_KEY('q')) break;
 	}
 
 	return 0;
