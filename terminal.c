@@ -28,6 +28,7 @@ struct editorConfig editor;
 /*** function signatures ***/
 void editorRefreshScreen (void);
 char editorReadKey (void);
+int getCursorPosition (int *rows, int *cols);
 
 /*** functions ***/
 
@@ -115,8 +116,7 @@ int getWindowSize(int * rows, int * cols)
 		{
 			return -1;
 		}
-		editorReadKey();
-		return -1;
+		return getCursorPosition(rows, cols);
 	}
 	else
 	{
@@ -230,7 +230,7 @@ void editorRefreshScreen (void)
  * 	@param none
  * 
  */
-void getCursorPosition (void)
+int getCursorPosition (int * rows, int * cols)
 {
 	if(write(STDOUT_FILENO, "\x1b[6n",4) != 4) 
 	{
