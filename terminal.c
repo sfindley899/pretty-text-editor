@@ -37,9 +37,9 @@ void enableRawMode(void)
 
 	struct termios raw = original_termios;
 
-	tcgetattr(STDIN_FILENO, &raw);
-
-	raw.c_lflag &= ~(ECHO | ICANON);
+	raw.c_iflag &= ~(ICRNL | IXON);
+	raw.c_oflag &= ~(OPOST);
+	raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
@@ -50,9 +50,10 @@ int main()
 
 	enableRawMode();
 
-	// loop to read 1 byte from standard input
+	// loop to read 1 from standard input
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q')
 	{
+		// echos control character value otherwise ASCII and character value
 		if(iscntrl(c))
 		{
 			printf("%d\n",c);
