@@ -16,8 +16,10 @@
 
 struct termios original_termios;
 
-/*** functions ***/
+/*** function signatures ***/
+void editorRefreshScreen (void);
 
+/*** functions ***/
 /** 
  * 	die
  * 
@@ -27,6 +29,7 @@ struct termios original_termios;
  */
 void die(const char *msg)
 {
+	editorRefreshScreen();
 	perror(msg);
 	exit(1);
 }
@@ -109,7 +112,7 @@ char editorReadKey(void)
  * 
  * 	@param none
  * 
- *  
+ *  handles key press from editorReadKey()
  */
 void editorProcessKeypress(void)
 {
@@ -129,16 +132,32 @@ void editorProcessKeypress(void)
 	}
 }
 
+
+
+
+/** 
+ * 	editorRefreshScreen
+ * 
+ * 	@param none
+ * 
+ *  clear screen using Erase In Display
+ */
+void editorRefreshScreen (void)
+{
+	write(STDOUT_FILENO, "\x1b[2J", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
 /*** main ***/
 
 int main() 
 {	
 	enableRawMode();
-	char c;
  
 	// infinite loop to read 1 from standard input
 	while (true)
 	{
+		editorRefreshScreen();
 		editorProcessKeypress();
 	}
 
