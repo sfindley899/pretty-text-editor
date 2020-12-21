@@ -29,7 +29,9 @@ void editorRefreshScreen (void);
  */
 void die(const char *msg)
 {
-	editorRefreshScreen();
+	write(STDOUT_FILENO, "\x1b[2J", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
+
 	perror(msg);
 	exit(1);
 }
@@ -132,8 +134,23 @@ void editorProcessKeypress(void)
 	}
 }
 
+/** 
+ * 	editorDrawRows
+ * 
+ * 	@param none
+ * 
+ * 	draw a column of tildes on left side
+ * 
+ */
+void editorDrawRows (void)
+{
+	int y;
 
-
+	for (y = 0; y < 24; y++)
+	{
+		write(STDOUT_FILENO, "~\r\n", 3);
+	}
+}
 
 /** 
  * 	editorRefreshScreen
@@ -145,6 +162,10 @@ void editorProcessKeypress(void)
 void editorRefreshScreen (void)
 {
 	write(STDOUT_FILENO, "\x1b[2J", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
+
+	editorDrawRows();
+
 	write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
