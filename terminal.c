@@ -1,6 +1,8 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
+#include <ctype.h>
+#include <stdio.h>
 
 struct termios original_termios;
 
@@ -51,7 +53,14 @@ int main()
 	// loop to read 1 byte from standard input
 	while (read(STDIN_FILENO, &c, 1) == 1 && c != 'q')
 	{
-		/* */
+		if(iscntrl(c))
+		{
+			printf("%d\n",c);
+		}
+		else
+		{
+			printf("%d ('%c')\n", c, c);
+		}
 	}
 
 	return 0;
