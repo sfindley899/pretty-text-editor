@@ -80,6 +80,55 @@ void enableRawMode(void)
 	}
 }
 
+/** 
+ * 	editorReadKey
+ * 
+ * 	@param none
+ * 
+ * 	Wait for single byte then return
+ * 	@todo handle multiple bytes
+ *  
+ */
+char editorReadKey(void)
+{
+	int nread;
+	char ch;
+
+	while((nread = read(STDERR_FILENO, &ch, 1)) != 1)
+	{
+		if(nread == -1 && errno != EAGAIN)
+		{
+			die("read");
+		}
+	}
+	return ch;
+}
+
+/** 
+ * 	editorProcessKeypress
+ * 
+ * 	@param none
+ * 
+ *  
+ */
+void editorProcessKeypress(void)
+{
+	char ch = editorReadKey();
+
+	switch(ch)
+	{
+		case CTRL_KEY('q'):
+		{
+			exit(0);
+			break;
+		}
+		default:
+		{
+			break;
+		}
+	}
+}
+
 /*** main ***/
 
 int main() 
@@ -90,23 +139,7 @@ int main()
 	// infinite loop to read 1 from standard input
 	while (true)
 	{
-		c = '\0';
-
-		if(read(STDIN_FILENO, &c, 1) == -1)
-		{
-			die("read");
-		}
-
-		// echos control character value otherwise ASCII and character value
-		if(iscntrl(c))
-		{
-			printf("%d\r\n",c);
-		}
-		else
-		{
-			printf("%d ('%c')\r\n", c, c);
-		}
-		if (c == CTRL_KEY('q')) break;
+		editorProcessKeypress();
 	}
 
 	return 0;
