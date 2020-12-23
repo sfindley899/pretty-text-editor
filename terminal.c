@@ -6,12 +6,15 @@
 #include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include <stdbool.h>
 
 /*** macros ***/
 
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define ABUF_INIT {NULL, 0}
+#define KILO_VERSION "0.0.1"
 
 /*** structs ***/
 
@@ -19,6 +22,12 @@ struct editorConfig {
 	int screenrows;
 	int screencols;
 	struct termios original_termios;
+};
+
+struct abuf
+{
+	char *b;
+	int len;
 };
 
 /*** globals ***/
@@ -29,6 +38,9 @@ struct editorConfig editor;
 void editorRefreshScreen (void);
 char editorReadKey (void);
 int getCursorPosition (int *rows, int *cols);
+void abAppend(struct abuf *ab, const char *s, int len);
+void abFree(struct abuf *ab);
+
 
 /*** functions ***/
 
@@ -192,22 +204,49 @@ void editorProcessKeypress(void)
 /** 
  * 	editorDrawRows
  * 
- * 	@param none
+ * 	@param ab buffer
  * 
- * 	draw a column of tildes on left side
- * 
+ * Draw tildes on screen
  */
-void editorDrawRows (void)
+void editorDrawRows(struct abuf  *ab)
 {
 	int y;
+	int padding;
+	char welcome [80];
+	int welcomelen;
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
-		write(STDOUT_FILENO, "~", 1);
+		if (y==editor.screenrows / 3)
+		{
+			welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
+
+			if(welcomelen > editor.screencols)
+			{
+				welcomelen = editor.screencols;
+			}
+			padding = (editor.screencols - welcomelen) / 2;
+			if (padding)
+			{
+				abAppend(ab, "~", 1);
+				padding--;
+			}
+			abAppend(ab, welcome, welcomelen);
+			while(padding-- != 0)
+			{
+				abAppend(ab, " ", 1);
+			}
+		}
+		else
+		{
+			abAppend(ab, "~", 1);
+		}
+		
+		abAppend(ab, "\x1b[k", 3);
 
 		if(y < editor.screenrows - 1)
 		{
-			write(STDOUT_FILENO, "\r\n", 2);
+			abAppend(ab, "\r\n", 2);
 		}
 	}
 }
@@ -221,12 +260,55 @@ void editorDrawRows (void)
  */
 void editorRefreshScreen (void)
 {
-	write(STDOUT_FILENO, "\x1b[2J", 4);
-	write(STDOUT_FILENO, "\x1b[H", 3);
+	struct abuf ab = ABUF_INIT;
 
-	editorDrawRows();
+	abAppend(&ab, "\x1b[?25l", 6);
+	abAppend(&ab, "\x1b[H", 3);
 
-	write(STDOUT_FILENO, "\x1b[H", 3);
+	editorDrawRows(&ab);
+
+	abAppend(&ab, "\x1b[H", 3);
+	abAppend(&ab, "\x1b[?25h", 6);
+
+	write(STDOUT_FILENO, ab.b, ab.len);
+	abFree(&ab);
+}
+
+/** 
+ * 	abAppend
+ * 
+ * 	@param ab buffer
+ *  @param s string
+ *  @param len length of string
+ * 
+ *  append string to buffer
+ */
+void abAppend(struct abuf *ab, const char *s, int len)
+{
+	char * new = realloc(ab->b, ab->len + len);
+
+	if (new == NULL)
+	{
+		return;
+	}
+	else
+	{
+		memcpy(&new[ab->len], s, len);
+		ab->b = new;
+		ab->len += len;
+	}
+}
+
+/** 
+ * 	abFree
+ * 
+ * 	@param ab buffer
+ * 
+ *  free buffer string
+ */
+void abFree(struct abuf *ab)
+{
+	free(ab->b);
 }
 
 /** 
@@ -260,11 +342,10 @@ int getCursorPosition (int * rows, int * cols)
 
 	buf[i] = '\0';
 
-	if(buf[0] != '\x1b' || buf[1] != '[')
+	if (buf[0] != '\x1b' || buf[1] != '[')
 	{
 		return -1;
 	}
-
 	if(sscanf(&buf[2], "%d;%d", rows, cols) != 2)
 	{
 		return -1;
