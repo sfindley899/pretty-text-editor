@@ -369,7 +369,16 @@ void editorProcessKeypress(void)
 			exit(0);
 			break;
 		}
-		
+		case HOME_KEY:
+		{
+			editor.cx = 0;
+			break;
+		}
+		case END_KEY:
+		{
+			editor.cx = editor.screencols - 1;
+			break;
+		}
 		case PAGE_UP:
 		case PAGE_DOWN:
 		{
