@@ -16,6 +16,14 @@
 #define ABUF_INIT {NULL, 0}
 #define KILO_VERSION "0.0.1"
 
+/*** enums ***/
+enum editorKey {
+	ARROW_LEFT = 1000,
+	ARROW_RIGHT,
+	ARROW_UP,
+	ARROW_DOWN
+};
+
 /*** structs ***/
 
 struct editorConfig {
@@ -37,11 +45,11 @@ struct editorConfig editor;
 
 /*** function signatures ***/
 void editorRefreshScreen (void);
-char editorReadKey (void);
+int editorReadKey (void);
 int getCursorPosition (int *rows, int *cols);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
-void editorMoveCursor(char key);
+void editorMoveCursor(int key);
 
 /*** functions ***/
 
@@ -165,7 +173,7 @@ void initEditor(void)
  * 	@todo handle multiple bytes
  *  
  */
-char editorReadKey(void)
+int editorReadKey(void)
 {
 	int nread;
 	char ch;
@@ -197,19 +205,19 @@ char editorReadKey(void)
 			{
 				case 'A':
 				{
-					return 'w';
+					return ARROW_UP;
 				}
 				case 'B':
 				{
-					return 's';
+					return ARROW_DOWN;
 				}
 				case 'C':
 				{
-					return 'd';
+					return ARROW_RIGHT;
 				}
 				case 'D':
 				{
-					return 'a';
+					return ARROW_LEFT;
 				}
 			}
 		}
@@ -229,26 +237,26 @@ char editorReadKey(void)
  * 
  *  handles wasd key press
  */
-void editorMoveCursor(char key)
+void editorMoveCursor(int key)
 {
 	switch (key)
 	{
-		case 'a':
+		case ARROW_LEFT:
 		{
 			editor.cx--;
 			break;
 		}
-		case 'd':
+		case ARROW_RIGHT:
 		{
 			editor.cx++;
 			break;
 		}
-		case 's':
+		case ARROW_DOWN:
 		{
 			editor.cy++;
 			break;
 		}
-		case 'w':
+		case ARROW_UP:
 		{
 			editor.cy--;
 			break;
@@ -264,7 +272,7 @@ void editorMoveCursor(char key)
  */
 void editorProcessKeypress(void)
 {
-	char ch = editorReadKey();
+	int ch = editorReadKey();
 
 	switch(ch)
 	{
@@ -276,10 +284,10 @@ void editorProcessKeypress(void)
 			break;
 		}
 
-		case 'w':
-		case 's':
-		case 'a':
-		case 'd':
+		case ARROW_UP:
+		case ARROW_DOWN:
+		case ARROW_LEFT:
+		case ARROW_RIGHT:
 		{
 			editorMoveCursor(ch);
 			break;
