@@ -19,6 +19,7 @@
 /*** structs ***/
 
 struct editorConfig {
+	int cx, cy;
 	int screenrows;
 	int screencols;
 	struct termios original_termios;
@@ -40,7 +41,7 @@ char editorReadKey (void);
 int getCursorPosition (int *rows, int *cols);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
-
+void editorMoveCursor(char key);
 
 /*** functions ***/
 
@@ -146,6 +147,9 @@ int getWindowSize(int * rows, int * cols)
  */
 void initEditor(void)
 {
+	editor.cx = 0;
+	editor.cy = 0;
+
 	if (getWindowSize(&editor.screenrows, &editor.screencols) == -1)
 	{
 		die("getWindowSize");
@@ -176,6 +180,39 @@ char editorReadKey(void)
 	return ch;
 }
 
+/** 
+ * 	editorMoveCursor
+ * 
+ * 	@param none
+ * 
+ *  handles wasd key press
+ */
+void editorMoveCursor(char key)
+{
+	switch (key)
+	{
+		case 'a':
+		{
+			editor.cx--;
+			break;
+		}
+		case 'd':
+		{
+			editor.cx++;
+			break;
+		}
+		case 's':
+		{
+			editor.cy++;
+			break;
+		}
+		case 'w':
+		{
+			editor.cy--;
+			break;
+		}
+	}
+}
 /** 
  * 	editorProcessKeypress
  * 
@@ -267,7 +304,10 @@ void editorRefreshScreen (void)
 
 	editorDrawRows(&ab);
 
-	abAppend(&ab, "\x1b[H", 3);
+	char buf[32];
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor.cy + 1, editor.cx + 1);
+	abAppend(&ab, buf, strlen(buf));
+
 	abAppend(&ab, "\x1b[?25h", 6);
 
 	write(STDOUT_FILENO, ab.b, ab.len);
