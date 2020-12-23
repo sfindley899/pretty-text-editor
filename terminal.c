@@ -169,6 +169,7 @@ char editorReadKey(void)
 {
 	int nread;
 	char ch;
+	char sequence[3];
 
 	while((nread = read(STDERR_FILENO, &ch, 1)) != 1)
 	{
@@ -177,7 +178,48 @@ char editorReadKey(void)
 			die("read");
 		}
 	}
-	return ch;
+
+	// handle 4 directional keypress
+	if (ch == '\x1b')
+	{
+		if (read(STDIN_FILENO, &sequence[0], 1) != 1)
+		{
+			return '\x1b';
+		}
+		if (read(STDIN_FILENO, &sequence[1], 1) != 1)
+		{
+			return '\x1b';
+		}
+
+		if(sequence[0] == '[')
+		{
+			switch (sequence[1])
+			{
+				case 'A':
+				{
+					return 'w';
+				}
+				case 'B':
+				{
+					return 's';
+				}
+				case 'C':
+				{
+					return 'd';
+				}
+				case 'D':
+				{
+					return 'a';
+				}
+			}
+		}
+		
+		return '\x1b';
+	}
+	else
+	{
+		return ch;
+	}
 }
 
 /** 
