@@ -227,8 +227,19 @@ void editorProcessKeypress(void)
 	switch(ch)
 	{
 		case CTRL_KEY('q'):
-		{
+		{      
+			write(STDOUT_FILENO, "\x1b[2J", 4);
+      		write(STDOUT_FILENO, "\x1b[H", 3);		
 			exit(0);
+			break;
+		}
+
+		case 'w':
+		case 's':
+		case 'a':
+		case 'd':
+		{
+			editorMoveCursor(ch);
 			break;
 		}
 		default:
