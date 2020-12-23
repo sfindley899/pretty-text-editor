@@ -21,7 +21,11 @@ enum editorKey {
 	ARROW_LEFT = 1000,
 	ARROW_RIGHT,
 	ARROW_UP,
-	ARROW_DOWN
+	ARROW_DOWN,
+	HOME_KEY,
+	END_KEY,
+	PAGE_UP,
+	PAGE_DOWN
 };
 
 /*** structs ***/
@@ -201,23 +205,92 @@ int editorReadKey(void)
 
 		if(sequence[0] == '[')
 		{
+
+			if(sequence[1] >= '0' && sequence[1] <= '9')
+			{
+				if (read(STDERR_FILENO, &sequence[2], 1) != 1)
+				{
+					return '\x1b';
+				}
+				if(sequence[2] == '~')
+				{
+					switch (sequence[1])
+					{					
+						case '1': 
+						{
+							return HOME_KEY;
+							break;
+						}
+						case '4':
+						{
+							return END_KEY;
+							break;
+						}
+						case '5': 
+						{
+							return PAGE_UP;
+							break;
+						}
+						case '6':
+						{
+							return PAGE_DOWN;
+							break;
+						}
+						case '7': 
+						{
+							return HOME_KEY;
+							break;
+						}
+						case '8':
+						{
+							return END_KEY;
+							break;
+						}
+					}
+				}
+			}
+			else
+			{
+				switch (sequence[1])
+				{
+					case 'A':
+					{
+						return ARROW_UP;
+					}
+					case 'B':
+					{
+						return ARROW_DOWN;
+					}
+					case 'C':
+					{
+						return ARROW_RIGHT;
+					}
+					case 'D':
+					{
+						return ARROW_LEFT;
+					}
+					case 'H':
+					{
+						return HOME_KEY;
+					}
+					case 'F':
+					{
+						return END_KEY;
+					}
+				}
+			}
+		}
+		else if (sequence[0] == 'O')
+		{
 			switch (sequence[1])
 			{
-				case 'A':
+				case 'H':				
 				{
-					return ARROW_UP;
+					return HOME_KEY;
 				}
-				case 'B':
+				case 'F':				
 				{
-					return ARROW_DOWN;
-				}
-				case 'C':
-				{
-					return ARROW_RIGHT;
-				}
-				case 'D':
-				{
-					return ARROW_LEFT;
+					return END_KEY;
 				}
 			}
 		}
@@ -243,22 +316,34 @@ void editorMoveCursor(int key)
 	{
 		case ARROW_LEFT:
 		{
-			editor.cx--;
+			if(editor.cx != 0)
+			{
+				editor.cx--;
+			}
 			break;
 		}
 		case ARROW_RIGHT:
 		{
-			editor.cx++;
+			if(editor.cx != editor.screencols - 1)
+			{
+				editor.cx++;
+			}
 			break;
 		}
 		case ARROW_DOWN:
 		{
-			editor.cy++;
-			break;
+			if(editor.cy != editor.screenrows - 1)
+			{
+				editor.cy++;
+			}
+			break;	
 		}
 		case ARROW_UP:
 		{
-			editor.cy--;
+			if(editor.cy != 0)
+			{
+				editor.cy--;
+			}
 			break;
 		}
 	}
@@ -273,6 +358,7 @@ void editorMoveCursor(int key)
 void editorProcessKeypress(void)
 {
 	int ch = editorReadKey();
+	int times;
 
 	switch(ch)
 	{
@@ -281,6 +367,17 @@ void editorProcessKeypress(void)
 			write(STDOUT_FILENO, "\x1b[2J", 4);
       		write(STDOUT_FILENO, "\x1b[H", 3);		
 			exit(0);
+			break;
+		}
+		
+		case PAGE_UP:
+		case PAGE_DOWN:
+		{
+			times = editor.screenrows;
+			while(times-- != 0)
+			{
+				editorMoveCursor(ch == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+			}
 			break;
 		}
 
