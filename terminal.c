@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 /*** macros ***/
@@ -22,6 +23,7 @@ enum editorKey {
 	ARROW_RIGHT,
 	ARROW_UP,
 	ARROW_DOWN,
+	DEL_KEY,
 	HOME_KEY,
 	END_KEY,
 	PAGE_UP,
@@ -29,21 +31,29 @@ enum editorKey {
 };
 
 /*** structs ***/
-
-struct editorConfig {
-	int cx, cy;
-	int screenrows;
-	int screencols;
-	struct termios original_termios;
-};
-
 struct abuf
 {
 	char *b;
 	int len;
 };
 
+typedef struct erow 
+{
+	int size;
+	char * chars;
+} erow;
+
+struct editorConfig {
+	int cx, cy;
+	int screenrows;
+	int screencols;
+	int numrows;
+	erow erow;
+	struct termios original_termios;
+};
+
 /*** globals ***/
+
 
 struct editorConfig editor;
 
@@ -54,7 +64,7 @@ int getCursorPosition (int *rows, int *cols);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorMoveCursor(int key);
-
+void editorOpen(void);
 /*** functions ***/
 
 /** 
@@ -161,6 +171,7 @@ void initEditor(void)
 {
 	editor.cx = 0;
 	editor.cy = 0;
+	editor.numrows = 0;
 
 	if (getWindowSize(&editor.screenrows, &editor.screencols) == -1)
 	{
@@ -219,6 +230,11 @@ int editorReadKey(void)
 						case '1': 
 						{
 							return HOME_KEY;
+							break;
+						}
+						case '3': 
+						{
+							return DEL_KEY;
 							break;
 						}
 						case '4':
@@ -301,6 +317,26 @@ int editorReadKey(void)
 	{
 		return ch;
 	}
+}
+
+/** 
+ * 	editorOpen
+ * 
+ * 	@param none
+ * 
+ *  handles file i/o
+ *  @todo init editor to handle dynamically allocated data 
+ */
+void editorOpen(void)
+{
+	char * line = "Hello, Gorgeous!";
+	ssize_t linelen = 13;
+
+	editor.erow.size = linelen;
+	editor.erow.chars = malloc(linelen + 1);
+	memcpy(editor.erow.chars, line, linelen);
+	editor.erow.chars[linelen] = '\0';
+	editor.numrows = 1;
 }
 
 /** 
@@ -415,35 +451,48 @@ void editorProcessKeypress(void)
 void editorDrawRows(struct abuf  *ab)
 {
 	int y;
+	int len;
 	int padding;
 	char welcome [80];
 	int welcomelen;
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
-		if (y==editor.screenrows / 3)
+		if(y >= editor.numrows)
 		{
-			welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
-
-			if(welcomelen > editor.screencols)
+			if (y==editor.screenrows / 3)
 			{
-				welcomelen = editor.screencols;
+				welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
+
+				if(welcomelen > editor.screencols)
+				{
+					welcomelen = editor.screencols;
+				}
+				padding = (editor.screencols - welcomelen) / 2;
+				if (padding)
+				{
+					abAppend(ab, "~", 1);
+					padding--;
+				}
+				abAppend(ab, welcome, welcomelen);
+				while(padding-- != 0)
+				{
+					abAppend(ab, " ", 1);
+				}
 			}
-			padding = (editor.screencols - welcomelen) / 2;
-			if (padding)
+			else
 			{
 				abAppend(ab, "~", 1);
-				padding--;
-			}
-			abAppend(ab, welcome, welcomelen);
-			while(padding-- != 0)
-			{
-				abAppend(ab, " ", 1);
 			}
 		}
 		else
 		{
-			abAppend(ab, "~", 1);
+			len = editor.erow.size;
+			if(len > editor.screencols)
+			{
+				len = editor.screencols;
+			}
+			abAppend(ab, editor.erow.chars, len);
 		}
 		
 		abAppend(ab, "\x1b[k", 3);
@@ -567,6 +616,7 @@ int main()
 {	
 	enableRawMode();
 	initEditor();
+	editorOpen();
 
 	// infinite loop to read 1 from standard input
 	while (true)
