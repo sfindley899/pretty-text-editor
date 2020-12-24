@@ -49,6 +49,7 @@ typedef struct erow
 
 struct editorConfig {
 	int cx, cy;
+	int rowoff;
 	int screenrows;
 	int screencols;
 	int numrows;
@@ -177,6 +178,7 @@ void initEditor(void)
 {
 	editor.cx = 0;
 	editor.cy = 0;
+	editor.rowoff = 0;
 	editor.numrows = 0;
 	editor.row = NULL;
 
@@ -345,8 +347,7 @@ void editorOpen(char * filename)
 		die("fopen");
 	}
 
-	linelen = getline(&line,&linecap,fp);
-	if (linelen != -1)
+	while ((linelen = getline(&line,&linecap,fp) != -1))
 	{
 		while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
 		{
@@ -393,7 +394,7 @@ void editorMoveCursor(int key)
 		}
 		case ARROW_DOWN:
 		{
-			if(editor.cy != editor.screenrows - 1)
+			if(editor.cy < editor.numrows)
 			{
 				editor.cy++;
 			}
@@ -477,13 +478,15 @@ void editorDrawRows(struct abuf  *ab)
 {
 	int y;
 	int len;
+	int filerow;
 	int padding;
 	char welcome [80];
 	int welcomelen;
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
-		if(y >= editor.numrows)
+		filerow = y + editor.rowoff;
+		if(filerow >= editor.numrows)
 		{
 			if (editor.numrows == 0 && y==editor.screenrows / 3)
 			{
@@ -512,12 +515,12 @@ void editorDrawRows(struct abuf  *ab)
 		}
 		else
 		{
-			len = editor.row[y].size;
+			len = editor.row[filerow].size;
 			if(len > editor.screencols)
 			{
 				len = editor.screencols;
 			}
-			abAppend(ab, editor.row[y].chars, len);
+			abAppend(ab, editor.row[filerow].chars, len);
 		}
 		
 		abAppend(ab, "\x1b[k", 3);
@@ -530,6 +533,23 @@ void editorDrawRows(struct abuf  *ab)
 }
 
 /** 
+ * 	editorScroll
+ * 
+ * 	@param none
+ * 
+ */
+void editorScroll(void)
+{
+	if (editor.cy < editor.rowoff)
+	{
+		editor.rowoff = editor.cy;
+	}
+	if (editor.cy >= editor.rowoff + editor.screenrows)
+	{
+		editor.rowoff = editor.cy - editor.screenrows + 1;
+	}
+}
+/** 
  * 	editorRefreshScreen
  * 
  * 	@param none
@@ -539,6 +559,8 @@ void editorDrawRows(struct abuf  *ab)
 void editorRefreshScreen (void)
 {
 	struct abuf ab = ABUF_INIT;
+
+	editorScroll();
 
 	abAppend(&ab, "\x1b[?25l", 6);
 	abAppend(&ab, "\x1b[H", 3);
