@@ -50,6 +50,7 @@ typedef struct erow
 struct editorConfig {
 	int cx, cy;
 	int rowoff;
+	int coloff;
 	int screenrows;
 	int screencols;
 	int numrows;
@@ -178,6 +179,7 @@ void initEditor(void)
 {
 	editor.cx = 0;
 	editor.cy = 0;
+	editor.coloff = 0;
 	editor.rowoff = 0;
 	editor.numrows = 0;
 	editor.row = NULL;
@@ -515,12 +517,16 @@ void editorDrawRows(struct abuf  *ab)
 		}
 		else
 		{
-			len = editor.row[filerow].size;
+			len = editor.row[filerow].size - editor.coloff;
+			if(len < 0)
+			{
+				len = 0;
+			}
 			if(len > editor.screencols)
 			{
 				len = editor.screencols;
 			}
-			abAppend(ab, editor.row[filerow].chars, len);
+			abAppend(ab, &editor.row[filerow].chars[editor.coloff], len);
 		}
 		
 		abAppend(ab, "\x1b[k", 3);
@@ -547,6 +553,14 @@ void editorScroll(void)
 	if (editor.cy >= editor.rowoff + editor.screenrows)
 	{
 		editor.rowoff = editor.cy - editor.screenrows + 1;
+	}
+	if (editor.cx < editor.coloff)
+	{
+		editor.coloff = editor.cx;
+	}
+	if (editor.cx >= editor.coloff + editor.screencols)
+	{
+		editor.coloff = editor.cx - editor.screencols + 1;
 	}
 }
 /** 
