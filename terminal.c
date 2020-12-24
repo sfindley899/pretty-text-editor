@@ -1,4 +1,7 @@
 /*** include ***/
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,6 +19,7 @@
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define ABUF_INIT {NULL, 0}
 #define KILO_VERSION "0.0.1"
+
 
 /*** enums ***/
 enum editorKey {
@@ -48,7 +52,7 @@ struct editorConfig {
 	int screenrows;
 	int screencols;
 	int numrows;
-	erow erow;
+	erow *row;
 	struct termios original_termios;
 };
 
@@ -64,7 +68,9 @@ int getCursorPosition (int *rows, int *cols);
 void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorMoveCursor(int key);
-void editorOpen(void);
+void editorOpen(char * filename);
+void editorAppendRow(char * string, size_t len);
+
 /*** functions ***/
 
 /** 
@@ -172,6 +178,7 @@ void initEditor(void)
 	editor.cx = 0;
 	editor.cy = 0;
 	editor.numrows = 0;
+	editor.row = NULL;
 
 	if (getWindowSize(&editor.screenrows, &editor.screencols) == -1)
 	{
@@ -327,16 +334,34 @@ int editorReadKey(void)
  *  handles file i/o
  *  @todo init editor to handle dynamically allocated data 
  */
-void editorOpen(void)
+void editorOpen(char * filename)
 {
-	char * line = "Hello, Gorgeous!";
-	ssize_t linelen = 13;
+	char * line = NULL;
+	size_t linecap = 0;
+	ssize_t linelen;
+	FILE *fp = fopen(filename, "r");
+	if(!fp) 
+	{
+		die("fopen");
+	}
 
-	editor.erow.size = linelen;
-	editor.erow.chars = malloc(linelen + 1);
-	memcpy(editor.erow.chars, line, linelen);
-	editor.erow.chars[linelen] = '\0';
-	editor.numrows = 1;
+	linelen = getline(&line,&linecap,fp);
+	if (linelen != -1)
+	{
+		while(linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+		{
+			linelen--;
+		}
+		editor.row->size = linelen;
+		editor.row->chars = malloc(linelen + 1);
+		memcpy(editor.row->chars, line, linelen);
+		editor.row->chars[linelen] = '\0';
+		editor.numrows = 1;
+
+		editorAppendRow(line, linelen);
+	}
+	free(line);
+	fclose(fp);
 }
 
 /** 
@@ -460,7 +485,7 @@ void editorDrawRows(struct abuf  *ab)
 	{
 		if(y >= editor.numrows)
 		{
-			if (y==editor.screenrows / 3)
+			if (editor.numrows == 0 && y==editor.screenrows / 3)
 			{
 				welcomelen = snprintf(welcome, sizeof(welcome), "Kilo editor -- version %s", KILO_VERSION);
 
@@ -487,12 +512,12 @@ void editorDrawRows(struct abuf  *ab)
 		}
 		else
 		{
-			len = editor.erow.size;
+			len = editor.row[y].size;
 			if(len > editor.screencols)
 			{
 				len = editor.screencols;
 			}
-			abAppend(ab, editor.erow.chars, len);
+			abAppend(ab, editor.row[y].chars, len);
 		}
 		
 		abAppend(ab, "\x1b[k", 3);
@@ -610,13 +635,37 @@ int getCursorPosition (int * rows, int * cols)
 	return 0;
 }
 
+/** 
+ * 	editorAppendRow
+ * 
+ * 	@param string
+ *  @param len
+ * 
+ */
+void editorAppendRow(char * string, size_t len)
+{
+	int at;
+
+	editor.row = realloc(editor.row, sizeof(erow) * (editor.numrows + 1));
+	at = editor.numrows;
+	editor.row[at].size = len;
+	editor.row[at].chars = malloc(len + 1);
+	memcpy(editor.row[at].chars, string, len);
+	editor.row[at].chars[len] = '\0';
+	editor.numrows++;
+}
+
 /*** main ***/
 
-int main() 
+int main(int argc, char *argv[]) 
 {	
 	enableRawMode();
 	initEditor();
-	editorOpen();
+	
+	if(argc >= 2)
+	{
+		editorOpen(argv[1]);
+	}
 
 	// infinite loop to read 1 from standard input
 	while (true)
