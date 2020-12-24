@@ -559,6 +559,7 @@ void editorScroll(void)
 void editorRefreshScreen (void)
 {
 	struct abuf ab = ABUF_INIT;
+	char buf[32];
 
 	editorScroll();
 
@@ -567,8 +568,7 @@ void editorRefreshScreen (void)
 
 	editorDrawRows(&ab);
 
-	char buf[32];
-	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor.cy + 1, editor.cx + 1);
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, editor.cx + 1);
 	abAppend(&ab, buf, strlen(buf));
 
 	abAppend(&ab, "\x1b[?25h", 6);
