@@ -540,6 +540,18 @@ void editorProcessKeypress(void)
 		case PAGE_UP:
 		case PAGE_DOWN:
 			{
+				if (ch == PAGE_UP)
+				{
+					editor.cy = editor.rowoff;
+				}
+				else if (ch == PAGE_DOWN)
+				{
+					editor.cy = editor.rowoff + editor.screenrows - 1;
+					if(editor.cy > editor.numrows)
+					{
+						editor.cy = editor.numrows;
+					}
+ 				}
 				times = editor.screenrows;
 				while (times-- != 0)
 				{
