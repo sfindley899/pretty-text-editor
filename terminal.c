@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <ctype.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <time.h>
 #include <stdio.h>
@@ -59,7 +60,9 @@ struct editorConfig
 	int screenrows;
 	int screencols;
 	int numrows;
-	erow * row;
+	char statusmsg[80];
+	time_t statusmsg_timestamp;
+	erow * row;	
 	char * filename;
 	struct termios original_termios;
 };
@@ -79,6 +82,7 @@ void editorOpen(char *filename);
 void editorAppendRow(char *string, size_t len);
 void editorUpdateRow(erow * row);
 void editorDrawStatusBar(struct abuf *ab);
+void editorSetStatusMessage(const char * fmt, ...);
 
 /*** functions ***/
 
@@ -192,12 +196,14 @@ void initEditor(void)
 	editor.numrows = 0;
 	editor.row = NULL;
 	editor.filename = NULL;
+	editor.statusmsg[0] = '\0';
+	editor.statusmsg_timestamp = 0;
 
 	if (getWindowSize(&editor.screenrows, &editor.screencols) == -1)
 	{
 		die("getWindowSize");
 	}
-	editor.screenrows -= 1;
+	editor.screenrows -= 2;
 }
 
 /** 
@@ -237,6 +243,22 @@ void editorDrawStatusBar(struct abuf *ab)
 	}
 
 	abAppend(ab, "\x1b[m", 3);
+	abAppend(ab, "\r\n", 3);
+}
+
+/** 
+ *	editorSetStatusMessage
+ *	
+ *  @param fmt format parameters
+ * 
+ */
+void editorSetStatusMessage(const char * fmt, ...)
+{
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(editor.statusmsg, sizeof(editor.statusmsg), fmt, ap);
+	va_end(ap);
+	editor.statusmsg_timestamp = time(NULL);
 }
 
 /**
@@ -906,6 +928,8 @@ int main(int argc, char *argv[])
 	{
 		editorOpen(argv[1]);
 	}
+
+	editorSetStatusMessage("HELP: Ctrl-Q = quit");
 
 	// infinite loop to read 1 from standard input
 	while (true)
