@@ -409,7 +409,7 @@ void editorMoveCursor(int key)
 
 		case ARROW_DOWN:
 			{
-				if (editor.cy < editor.screenrows - 1)
+				if (editor.cy < editor.numrows)
 				{
 					editor.cy++;
 				}
@@ -500,11 +500,13 @@ void editorProcessKeypress(void)
  */
 void editorDrawRows(struct abuf *ab)
 {
-	int y;
+	int y, len;
+	int filerow;
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
-		if (y >= editor.numrows)
+		filerow = y + editor.rowoff;
+		if (filerow >= editor.numrows)
 		{
 			if (editor.numrows == 0 && y == editor.screenrows / 3)
 			{
@@ -529,9 +531,9 @@ void editorDrawRows(struct abuf *ab)
 		}
 		else
 		{
-			int len = editor.row[y].size;
+			len = editor.row[filerow].size;
 			if (len > editor.screencols) len = editor.screencols;
-			abAppend(ab, editor.row[y].chars, len);
+			abAppend(ab, editor.row[filerow].chars, len);
 		}
 
 		abAppend(ab, "\x1b[K", 3);
