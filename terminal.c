@@ -52,6 +52,7 @@ typedef struct erow
 struct editorConfig
 {
 	int cx, cy;
+	int rx;
 	int rowoff;
 	int coloff;
 	int screenrows;
@@ -182,6 +183,7 @@ void initEditor(void)
 {
 	editor.cx = 0;
 	editor.cy = 0;
+	editor.rx = 0 ;
 	editor.coloff = 0;
 	editor.rowoff = 0;
 	editor.numrows = 0;
@@ -191,6 +193,30 @@ void initEditor(void)
 	{
 		die("getWindowSize");
 	}
+}
+
+/** 
+ *	editorRowCxToRx
+ * 
+ *	@param row editor row
+ *	@param cx column position
+ *
+ * 	@todo convert chars index to render index
+ */
+int editorRowCxToRx(erow *row, int cx)
+{
+	int rx = 0, j;
+
+	for (j = 0; j < cx; j++)
+	{
+		if(row->chars[j] == '\t')
+		{
+			rx += (TAB_STOP - 1) - (rx % TAB_STOP);
+		}
+		rx++;
+	}
+
+	return rx;
 }
 
 /** 
@@ -600,6 +626,12 @@ void editorDrawRows(struct abuf *ab)
  */
 void editorScroll(void)
 {
+	editor.rx = 0;
+	if (editor.cy < editor.numrows)
+	{
+		editor.rx = editorRowCxToRx(&editor.row[editor.cy], editor.cx);
+	}
+
 	if (editor.cy < editor.rowoff)
 	{
 		editor.rowoff = editor.cy;
@@ -610,14 +642,14 @@ void editorScroll(void)
 		editor.rowoff = editor.cy - editor.screenrows + 1;
 	}
 
-	if (editor.cx < editor.coloff)
+	if (editor.rx < editor.coloff)
 	{
-		editor.coloff = editor.cx;
+		editor.coloff = editor.rx;
 	}
 
-	if (editor.cx >= editor.coloff + editor.screencols)
+	if (editor.rx >= editor.coloff + editor.screencols)
 	{
-		editor.coloff = editor.cx - editor.screencols + 1;
+		editor.coloff = editor.rx - editor.screencols + 1;
 	}
 }
 
@@ -640,7 +672,7 @@ void editorRefreshScreen(void)
 
 	editorDrawRows(&ab);
 
-	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, (editor.cx - editor.coloff) + 1);
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, (editor.rx - editor.coloff) + 1);
 	abAppend(&ab, buf, strlen(buf));
 
 	abAppend(&ab, "\x1b[?25h", 6);
