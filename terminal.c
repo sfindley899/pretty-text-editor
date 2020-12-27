@@ -8,6 +8,7 @@
 #include <termios.h>
 #include <ctype.h>
 #include <errno.h>
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -59,6 +60,7 @@ struct editorConfig
 	int screencols;
 	int numrows;
 	erow * row;
+	char * filename;
 	struct termios original_termios;
 };
 
@@ -76,6 +78,7 @@ void editorMoveCursor(int key);
 void editorOpen(char *filename);
 void editorAppendRow(char *string, size_t len);
 void editorUpdateRow(erow * row);
+void editorDrawStatusBar(struct abuf *ab);
 
 /*** functions ***/
 
@@ -188,14 +191,55 @@ void initEditor(void)
 	editor.rowoff = 0;
 	editor.numrows = 0;
 	editor.row = NULL;
+	editor.filename = NULL;
 
 	if (getWindowSize(&editor.screenrows, &editor.screencols) == -1)
 	{
 		die("getWindowSize");
 	}
+	editor.screenrows -= 1;
 }
 
 /** 
+ *	editorDrawStatusBar
+ *	
+ *  @param ab buffer
+ * 
+ */
+void editorDrawStatusBar(struct abuf *ab)
+{
+	int len = 0, rlen;
+	char status[80], rstatus[80];
+
+	abAppend(ab, "\x1b[7m", 4);
+	len = snprintf(status, sizeof(status), "%.20s - %d lines", \
+			(editor.filename != NULL)? editor.filename : "[Untitled]", editor.numrows);
+	rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", \
+			editor.cy + 1, editor.numrows);
+	if (len > editor.screencols)
+	{
+		len = editor.screencols;
+	}
+	abAppend(ab, status, len);
+
+	while (len < editor.screencols)
+	{
+		if (editor.screencols - len == rlen)
+		{
+			abAppend(ab, rstatus, rlen);
+			break;
+		}
+		else
+		{
+			abAppend(ab, " ", 1);
+			len++;
+		}
+	}
+
+	abAppend(ab, "\x1b[m", 3);
+}
+
+/**
  *	editorRowCxToRx
  * 
  *	@param row editor row
@@ -381,6 +425,12 @@ int editorReadKey(void)
  */
 void editorOpen(char *filename)
 {
+	if(editor.filename != NULL)
+	{
+		free(editor.filename);
+	}
+	editor.filename = strdup(filename);
+
 	FILE *fp = fopen(filename, "r");
 	char *line = NULL;
 	size_t linecap = 0;
@@ -626,10 +676,8 @@ void editorDrawRows(struct abuf *ab)
 		}
 
 		abAppend(ab, "\x1b[K", 3);
-		if (y < editor.screenrows - 1)
-		{
-			abAppend(ab, "\r\n", 2);
-		}
+		abAppend(ab, "\r\n", 2);
+	
 	}
 }
 
@@ -686,6 +734,7 @@ void editorRefreshScreen(void)
 	abAppend(&ab, "\x1b[H", 3);
 
 	editorDrawRows(&ab);
+	editorDrawStatusBar(&ab);
 
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, (editor.rx - editor.coloff) + 1);
 	abAppend(&ab, buf, strlen(buf));
