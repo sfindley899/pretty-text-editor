@@ -419,6 +419,12 @@ void editorMoveCursor(int key)
 				{
 					editor.cx++;
 				}
+				else if (row != NULL && editor.cx == row->size)
+				{
+					editor.cy++;
+					editor.cx = 0;
+				}
+				
 				break;
 			}
 
