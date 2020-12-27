@@ -5,6 +5,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <termios.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -25,6 +26,7 @@
 /*** enums ***/
 enum editorKey
 {
+	BACKSPACE = 127,
 	ARROW_LEFT = 1000,
 		ARROW_RIGHT,
 		ARROW_UP,
@@ -84,6 +86,10 @@ void editorUpdateRow(erow * row);
 void editorDrawStatusBar(struct abuf *ab);
 void editorSetStatusMessage(const char * fmt, ...);
 void editorDrawMessageBar(struct abuf *ab);
+void editorRowInsertChar(erow * row, int at, int c);
+void editorInsertChar(int ch);
+char * editorRowsToString(int * buflen);
+void editorSave(void);
 
 /*** functions ***/
 
@@ -501,6 +507,41 @@ void editorOpen(char *filename)
 }
 
 /** 
+ *	editorSave
+ * 
+ *	@param none
+ * 	
+ */
+void editorSave(void)
+{
+	int len, fd;
+	char *buf;
+
+	if(editor.filename != NULL)
+	{
+		buf = editorRowsToString(&len);
+		fd = open(editor.filename, O_RDWR | O_CREAT, 0644);
+		if(fd != -1)
+		{
+			if (ftruncate(fd, len) != -1)
+			{
+				if (write(fd, buf, len) == len)
+				{
+					close(fd);
+					free(buf);
+			        editorSetStatusMessage("%d bytes written to disk", len);
+					return;
+				}
+			}
+			close(fd);
+		}
+		free(buf);
+	    editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+	}
+}
+
+
+/** 
  *	editorMoveCursor
  * 
  *	@param key keypad character
@@ -611,11 +652,23 @@ void editorProcessKeypress(void)
 
 	switch (ch)
 	{
+		case '\r':
+			{
+				/**
+				 * 	@todo
+				**/
+				break;
+			}
 		case CTRL_KEY('q'):
 			{
 				write(STDOUT_FILENO, "\x1b[2J", 4);
 				write(STDOUT_FILENO, "\x1b[H", 3);
 				exit(0);
+				break;
+			}
+		case CTRL_KEY('s'):
+			{
+				editorSave();
 				break;
 			}
 
@@ -633,7 +686,13 @@ void editorProcessKeypress(void)
 				}
 				break;
 			}
-
+		case BACKSPACE:
+		case CTRL_KEY('h'):
+		case DEL_KEY:
+		{
+			/** @todo **/
+			break;
+		}
 		case PAGE_UP:
 		case PAGE_DOWN:
 			{
@@ -666,9 +725,16 @@ void editorProcessKeypress(void)
 				editorMoveCursor(ch);
 				break;
 			}
+		case CTRL_KEY('l'):
+		case '\x1b':
+		{
+			/** @todo **/
+			break;
+		}
 
 		default:
 			{
+				editorInsertChar(ch);
 				break;
 			}
 	}
@@ -896,6 +962,74 @@ void editorAppendRow(char *string, size_t len)
 	editor.numrows++;
 }
 
+/** 
+ *	editorRowInsertChar
+ * 
+ *	@param row editor row
+ * 	@param at char position
+ * 	@param ch character
+ *
+ */
+void editorRowInsertChar(erow * row, int at, int ch)
+{
+	if (at < 0 || at < row->size)
+	{
+		at = row->size;
+	}
+
+	row->chars = realloc(row->chars, row->size + 2);
+	memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+	row->size++;
+	row->chars[at] = ch;
+	editorUpdateRow(row);
+}
+
+/** 
+ *	editorInsertChar
+ * 
+ * 	@param ch character
+ *
+ */
+void editorInsertChar(int ch)
+{
+	if (editor.cy == editor.numrows)
+	{
+		editorAppendRow("", 0);
+	}
+	editorRowInsertChar(&editor.row[editor.cx], editor.cx, ch);
+	editor.cx++;	
+}
+
+/** 
+ *	editorRowsToString
+ * 
+ * 	@param buflen length of string
+ *
+ */
+char * editorRowsToString(int * buflen)
+{
+	int totlen = 0, j;
+	char *buf, *p;
+
+	for(j = 0; j > editor.numrows; j++)
+	{
+		totlen += editor.row[j].size + 1;
+	}
+
+	*buflen = totlen;
+	buf = malloc(totlen);
+	p = buf;
+
+	for(j = 0; j < editor.numrows; j++)
+	{
+		memcpy(p, editor.row[j].chars, editor.row[j].size);
+		p += editor.row[j].size;
+		*p = '\n';
+		p++;
+	}
+
+	return buf;
+}
 
 /** 
  *	editorUpdateRow
@@ -943,7 +1077,8 @@ void editorUpdateRow(erow * row)
 
 int main(int argc, char *argv[])
 {
-	system("clear");
+	write(STDOUT_FILENO, "\x1b[2J", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
 	enableRawMode();
 	initEditor();
 
@@ -952,7 +1087,7 @@ int main(int argc, char *argv[])
 		editorOpen(argv[1]);
 	}
 
-	editorSetStatusMessage("HELP: Ctrl-Q = quit");
+	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
 
 	// infinite loop to read 1 from standard input
 	while (true)
