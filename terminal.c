@@ -43,7 +43,9 @@ struct abuf
 typedef struct erow
 {
 	int size;
+	int rsize;
 	char *chars;
+	char *render;
 } erow;
 
 struct editorConfig
@@ -71,6 +73,7 @@ void abFree(struct abuf *ab);
 void editorMoveCursor(int key);
 void editorOpen(char *filename);
 void editorAppendRow(char *string, size_t len);
+void editorUpdateRow(erow * row);
 
 /*** functions ***/
 
@@ -743,8 +746,36 @@ void editorAppendRow(char *string, size_t len)
 	editor.row[at].chars = malloc(len + 1);
 	memcpy(editor.row[at].chars, string, len);
 	editor.row[at].chars[len] = '\0';
+
+	editor.row[at].rsize = 0;
+	editor.row[at].render = NULL;
+	editorUpdateRow(&editor.row[at]);
+
 	editor.numrows++;
 }
+
+
+/** 
+ *	editorUpdateRow
+ * 
+ *	@param row editor row
+ *
+ */
+void editorUpdateRow(erow * row)
+{
+	int j, idx = 0;
+	free(row->render);
+	row->render = malloc(row->size + 1);
+
+	for(j = 0; j < row->size; j++)
+	{
+		row->render[idx++] = row->chars[j];
+	}
+
+	row->render[idx] = '\0';
+	row->rsize = idx;
+}
+
 
 /*** main ***/
 
