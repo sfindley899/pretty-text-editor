@@ -83,6 +83,7 @@ void editorAppendRow(char *string, size_t len);
 void editorUpdateRow(erow * row);
 void editorDrawStatusBar(struct abuf *ab);
 void editorSetStatusMessage(const char * fmt, ...);
+void editorDrawMessageBar(struct abuf *ab);
 
 /*** functions ***/
 
@@ -244,6 +245,27 @@ void editorDrawStatusBar(struct abuf *ab)
 
 	abAppend(ab, "\x1b[m", 3);
 	abAppend(ab, "\r\n", 3);
+}
+
+/** 
+ *	editorDrawMessageBar
+ *	
+ *  @param ab buffer
+ * 
+ */
+void editorDrawMessageBar(struct abuf *ab)
+{
+	int msglen = strlen(editor.statusmsg);
+	abAppend(ab, "\x1b[K", 3);
+
+	if (msglen > editor.screencols)
+	{
+		msglen = editor.screencols;
+	}
+	if ((msglen > 0) && (time(NULL) - editor.statusmsg_timestamp < 5))
+	{
+		abAppend(ab, editor.statusmsg, msglen);
+	}
 }
 
 /** 
@@ -757,6 +779,7 @@ void editorRefreshScreen(void)
 
 	editorDrawRows(&ab);
 	editorDrawStatusBar(&ab);
+	editorDrawMessageBar(&ab);
 
 	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, (editor.rx - editor.coloff) + 1);
 	abAppend(&ab, buf, strlen(buf));
