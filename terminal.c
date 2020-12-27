@@ -18,6 +18,7 @@
 #define CTRL_KEY(k)((k) &0x1f)
 #define ABUF_INIT {NULL, 0}
 #define KILO_VERSION "0.0.1"
+#define TAB_STOP 8
 
 /*** enums ***/
 enum editorKey
@@ -577,10 +578,10 @@ void editorDrawRows(struct abuf *ab)
 		}
 		else
 		{
-			len = editor.row[filerow].size - editor.coloff;
+			len = editor.row[filerow].rsize - editor.coloff;
 			if (len < 0) len = 0;
 			if (len > editor.screencols) len = editor.screencols;
-			abAppend(ab, &editor.row[filerow].chars[editor.coloff], len);
+			abAppend(ab, &editor.row[filerow].render[editor.coloff], len);
 		}
 
 		abAppend(ab, "\x1b[K", 3);
@@ -763,13 +764,33 @@ void editorAppendRow(char *string, size_t len)
  */
 void editorUpdateRow(erow * row)
 {
-	int j, idx = 0;
-	free(row->render);
-	row->render = malloc(row->size + 1);
+	int j, idx = 0, tabs = 0;
 
 	for(j = 0; j < row->size; j++)
 	{
-		row->render[idx++] = row->chars[j];
+		if(row->chars[j] == '\t') 
+		{
+			tabs++;
+		}
+	}
+
+	free(row->render);
+	row->render = malloc(row->size + tabs*(TAB_STOP - 1) + 1);
+
+	for(j = 0; j < row->size; j++)
+	{
+		if (row->chars[j] == '\t')
+		{
+			row->render[idx++] = ' ';
+			while (idx % TAB_STOP != 0)
+			{
+				row->render[idx++] = ' ';
+			}
+		}
+		else
+		{
+			row->render[idx++] = row->chars[j];
+		}		
 	}
 
 	row->render[idx] = '\0';
