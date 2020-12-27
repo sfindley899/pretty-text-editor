@@ -385,6 +385,18 @@ void editorOpen(char *filename)
  */
 void editorMoveCursor(int key)
 {
+	erow *row;
+	int rowlen;
+
+	if (editor.cy >= editor.numrows)
+	{
+		row = NULL;
+	}
+	else
+	{
+		row = &editor.row[editor.cy];
+	}
+	
 	switch (key)
 	{
 		case ARROW_LEFT:
@@ -393,17 +405,20 @@ void editorMoveCursor(int key)
 				{
 					editor.cx--;
 				}
-
+				else if (editor.cy > 0)
+				{
+					editor.cy--;
+					editor.cx = editor.row[editor.cy].size;
+				}
 				break;
 			}
 
 		case ARROW_RIGHT:
 			{
-				if (editor.cx != editor.screencols - 1)
+				if(row != NULL && editor.cx < row->size)
 				{
 					editor.cx++;
 				}
-
 				break;
 			}
 
@@ -426,6 +441,29 @@ void editorMoveCursor(int key)
 
 				break;
 			}
+	}
+
+	if (editor.cy >= editor.numrows)
+	{
+		row = NULL;
+	}
+	else
+	{
+		row = &editor.row[editor.cy];
+	}
+
+	if (row != NULL)
+	{
+		rowlen = row->size;
+	}
+	else
+	{
+		rowlen = 0;
+	}
+
+	if (editor.cx > rowlen)
+	{
+		editor.cx = rowlen;
 	}
 }
 
@@ -496,7 +534,6 @@ void editorProcessKeypress(void)
  * 
  *	@param ab buffer
  * 
- *Draw tildes on screen
  */
 void editorDrawRows(struct abuf *ab)
 {
@@ -531,9 +568,10 @@ void editorDrawRows(struct abuf *ab)
 		}
 		else
 		{
-			len = editor.row[filerow].size;
+			len = editor.row[filerow].size - editor.coloff;
+			if (len < 0) len = 0;
 			if (len > editor.screencols) len = editor.screencols;
-			abAppend(ab, editor.row[filerow].chars, len);
+			abAppend(ab, &editor.row[filerow].chars[editor.coloff], len);
 		}
 
 		abAppend(ab, "\x1b[K", 3);
@@ -592,7 +630,7 @@ void editorRefreshScreen(void)
 
 	editorDrawRows(&ab);
 
-	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, editor.cx + 1);
+	snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (editor.cy - editor.rowoff) + 1, (editor.cx - editor.coloff) + 1);
 	abAppend(&ab, buf, strlen(buf));
 
 	abAppend(&ab, "\x1b[?25h", 6);
