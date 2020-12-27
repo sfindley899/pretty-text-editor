@@ -533,7 +533,10 @@ void editorProcessKeypress(void)
 
 		case END_KEY:
 			{
-				editor.cx = editor.screencols - 1;
+				if (editor.cy < editor.numrows)
+				{
+					editor.cx = editor.row[editor.cy].size;
+				}
 				break;
 			}
 
