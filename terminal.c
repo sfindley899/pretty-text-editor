@@ -975,7 +975,8 @@ void editorProcessKeypress(void)
  */
 void editorDrawRows(struct abuf *ab)
 {
-	int y, len;
+	int y, len, j;
+	char *ch;
 	int filerow;
 
 	for (y = 0; y < editor.screenrows; y++)
@@ -1007,9 +1008,29 @@ void editorDrawRows(struct abuf *ab)
 		else
 		{
 			len = editor.row[filerow].rsize - editor.coloff;
-			if (len < 0) len = 0;
-			if (len > editor.screencols) len = editor.screencols;
-			abAppend(ab, &editor.row[filerow].render[editor.coloff], len);
+			if (len < 0)
+			{
+				len = 0;
+			} 
+			if (len > editor.screencols)
+			{
+				len = editor.screencols;
+			}
+			ch = &editor.row[filerow].render[editor.coloff];
+			for (j = 0; j < len; j++)
+			{
+				if (isdigit(ch[j]))
+				{
+					abAppend(ab, "\x1b[31m", 5);
+					abAppend(ab, &ch[j], 1);
+					abAppend(ab, "\x1b[39m", 5);
+				}
+				else
+				{
+					abAppend(ab, &ch[j], 1);
+				}
+				
+			}
 		}
 
 		abAppend(ab, "\x1b[K", 3);
