@@ -39,6 +39,11 @@ enum editorKey
 		PAGE_DOWN
 };
 
+enum editorHighlight {
+	HL_NORMAL = 0,
+		HL_NUMBER
+};
+
 /*** structs ***/
 struct abuf
 {
@@ -52,6 +57,7 @@ typedef struct erow
 	int rsize;
 	char *chars;
 	char *render;
+	unsigned char * hl;
 } erow;
 
 struct editorConfig
@@ -95,6 +101,8 @@ void editorInsertChar(int ch);
 char * editorRowsToString(int * buflen);
 void editorSave(void);
 char * editorPrompt(char * prompt, void(*callback)(char *, int ));
+void editorUpdateSyntax(erow * row);
+int editorSyntaxToColor(int hl);
 
 /*** functions ***/
 
@@ -975,9 +983,11 @@ void editorProcessKeypress(void)
  */
 void editorDrawRows(struct abuf *ab)
 {
-	int y, len, j;
-	char *ch;
+	int y, len, j, clen, color, current_color = -1;
+	char *ch; 
+	unsigned char *hl;
 	int filerow;
+	char buf[16];
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
@@ -1017,25 +1027,35 @@ void editorDrawRows(struct abuf *ab)
 				len = editor.screencols;
 			}
 			ch = &editor.row[filerow].render[editor.coloff];
+			hl = &editor.row[filerow].hl[editor.coloff];
 			for (j = 0; j < len; j++)
 			{
-				if (isdigit(ch[j]))
+				if (hl[j] == HL_NORMAL)
 				{
-					abAppend(ab, "\x1b[31m", 5);
+					if (current_color != -1)
+					{
+						abAppend(ab, "\x1b[39m", 5);
+						current_color = -1;
+					}
 					abAppend(ab, &ch[j], 1);
-					abAppend(ab, "\x1b[39m", 5);
 				}
 				else
 				{
+					color = editorSyntaxToColor(hl[j]);
+					if (color != current_color)
+					{
+						current_color = color;
+						clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
+						abAppend(ab, buf, clen);
+					}
 					abAppend(ab, &ch[j], 1);
 				}
-				
 			}
+			abAppend(ab, "\x1b[39m", 5);
 		}
 
 		abAppend(ab, "\x1b[K", 3);
 		abAppend(ab, "\r\n", 2);
-	
 	}
 }
 
@@ -1188,6 +1208,28 @@ int getCursorPosition(int *rows, int *cols)
 }
 
 /** 
+ *	editorUpdateSyntax
+ *
+ *	@param row editor row
+ *
+ *
+ */
+void editorUpdateSyntax(erow * row)
+{
+	int i;
+	row->hl = realloc(row->hl, row->rsize);
+	memset(row->hl, HL_NORMAL, row->rsize);
+
+	for(i = 0; i < row->rsize; i++)
+	{
+		if(isdigit(row->render[i]))
+		{
+			row->hl[i] = HL_NUMBER;
+		}
+	}
+}
+
+/** 
  *	editorInsertRow
  *
  *	@param at editor row character position
@@ -1213,6 +1255,7 @@ void editorInsertRow(int at, char *string, size_t len)
 
 		editor.row[at].rsize = 0;
 		editor.row[at].render = NULL;
+		editor.row[at].hl = NULL;
 		editorUpdateRow(&editor.row[at]);
 
 		editor.numrows++;
@@ -1248,6 +1291,7 @@ void editorFreeRow(erow * row)
 {
 	free(row->render);
 	free(row->chars);
+	free(row->hl);
 }
 
 /** 
@@ -1463,8 +1507,33 @@ void editorUpdateRow(erow * row)
 
 	row->render[idx] = '\0';
 	row->rsize = idx;
+
+	editorUpdateSyntax(row);
 }
 
+
+/** 
+ *	editorSyntaxToColor
+ * 
+ * 	@param hl highlight color value
+ *
+ * 	@todo return ANSI color value
+ */
+int editorSyntaxToColor(int hl)
+{
+	switch (hl)
+	{
+		case HL_NUMBER:
+			{
+				return 31;
+			}
+		
+		default:
+			{
+				return 37;
+			}
+	}
+}
 
 /*** main ***/
 
