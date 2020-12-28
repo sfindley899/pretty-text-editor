@@ -320,6 +320,36 @@ int editorRowCxToRx(erow *row, int cx)
 	return rx;
 }
 
+/**
+ *	editorRowRxtoCx
+ * 
+ *	@param row editor row
+ *	@param rx render position
+ *
+ * 	@todo convert render index to char index
+ */
+int editorRowRxToCx(erow *row, int rx)
+{
+	int cur_rx = 0;
+	int cx;
+
+	for (cx = 0; cx < row->size; cx++)
+	{
+		if(row->chars[cx] == '\t')
+		{
+			cur_rx += (TAB_STOP - 1) - (cur_rx % TAB_STOP);
+		}
+		cur_rx++;
+
+		if (cur_rx > rx)
+		{
+			return cx;
+		}
+	}
+
+	return cx;
+}
+
 /** 
  *	editorReadKey
  * 
@@ -558,6 +588,41 @@ void editorSave(void)
 }
 
 /** 
+ *	editorFind
+ * 
+ *  @param none
+ * 
+ */
+void editorFind(void)
+{
+	int i;
+	char *match, *query;
+	erow * row;
+	
+	query = editorPrompt("Search %s (ESC to cancel)");
+	if (query == NULL)
+	{
+		return;
+	}
+
+	for (i = 0; i < editor.numrows; i++)
+	{
+		row = &editor.row[i];
+		match = strstr(row->render, query);
+
+		if(match)
+		{
+			editor.cy = i;
+			editor.cx = editorRowRxToCx(row, match - row->render);
+			editor.rowoff = editor.numrows;
+			break;
+		}
+	}
+
+	free(query);
+}
+
+/** 
  *	editorMoveCursor
  * 
  *	@param key keypad character
@@ -764,6 +829,11 @@ void editorProcessKeypress(void)
 				}
 				break;
 			}
+		case CTRL_KEY('f'):
+		{
+			editorFind();
+			break;
+		}
 		case BACKSPACE:
 		case CTRL_KEY('h'):
 		case DEL_KEY:
@@ -1316,7 +1386,7 @@ int main(int argc, char *argv[])
 		editorOpen(argv[1]);
 	}
 
-	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit");
+	editorSetStatusMessage("HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
 
 	// infinite loop to read 1 from standard input
 	while (true)
