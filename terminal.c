@@ -83,11 +83,12 @@ void abAppend(struct abuf *ab, const char *s, int len);
 void abFree(struct abuf *ab);
 void editorMoveCursor(int key);
 void editorOpen(char *filename);
-void editorAppendRow(char *string, size_t len);
+void editorInsertRow(int at, char *string, size_t len);
 void editorUpdateRow(erow * row);
 void editorDrawStatusBar(struct abuf *ab);
 void editorSetStatusMessage(const char * fmt, ...);
 void editorDrawMessageBar(struct abuf *ab);
+void editorInsertNewLine(void);
 void editorRowInsertChar(erow * row, int at, int c);
 void editorDelChar(void);
 void editorInsertChar(int ch);
@@ -504,7 +505,7 @@ void editorOpen(char *filename)
 			linelen--;
 		}
 
-		editorAppendRow(line, linelen);
+		editorInsertRow(editor.numrows, line, linelen);
 	}
 
 	free(line);
@@ -662,9 +663,7 @@ void editorProcessKeypress(void)
 	{
 		case '\r':
 			{
-				/**
-				 * 	@todo
-				**/
+				editorInsertNewLine();
 				break;
 			}
 		case CTRL_KEY('q'):
@@ -961,27 +960,36 @@ int getCursorPosition(int *rows, int *cols)
 }
 
 /** 
- *	editorAppendRow
- * 
+ *	editorInsertRow
+ *
+ *	@param at editor row character position
  *	@param string
- * 	@param len
+ * 	@param len string length 
  *
  */
-void editorAppendRow(char *string, size_t len)
+void editorInsertRow(int at, char *string, size_t len)
 {
-	editor.row = realloc(editor.row, sizeof(erow) *(editor.numrows + 1));
-	int at = editor.numrows;
-	editor.row[at].size = len;
-	editor.row[at].chars = malloc(len + 1);
-	memcpy(editor.row[at].chars, string, len);
-	editor.row[at].chars[len] = '\0';
+	if (at < 0 || at > editor.numrows)
+	{
+		return;
+	}
+	else
+	{
+		editor.row = realloc(editor.row, sizeof(erow) * (editor.numrows + 1));
+		memmove(&editor.row[at + 1], &editor.row[at], sizeof(erow) * (editor.numrows - at));
 
-	editor.row[at].rsize = 0;
-	editor.row[at].render = NULL;
-	editorUpdateRow(&editor.row[at]);
+		editor.row[at].size = len;
+		editor.row[at].chars = malloc(len + 1);
+		memcpy(editor.row[at].chars, string, len);
+		editor.row[at].chars[len] = '\0';
 
-	editor.numrows++;
-	editor.dirty++;
+		editor.row[at].rsize = 0;
+		editor.row[at].render = NULL;
+		editorUpdateRow(&editor.row[at]);
+
+		editor.numrows++;
+		editor.dirty++;	
+	}
 }
 
 /** 
@@ -1036,6 +1044,32 @@ void editorDelRow(int at)
 }
 
 /** 
+ *	editorInsertNewLine
+ * 
+ *	@param
+ *
+ */
+void editorInsertNewLine(void)
+{
+	erow * row;
+	if (editor.cx == 0)
+	{
+		editorInsertRow(editor.cy, "", 0);
+	}
+	else
+	{
+		row = &editor.row[editor.cy];
+		editorInsertRow(editor.cy + 1, &row->chars[editor.cx], row->size - editor.cx);
+		row = &editor.row[editor.cy];
+		row->size = editor.cx;
+		row->chars[row->size] = '\0';
+		editorUpdateRow(row);
+	}
+	editor.cy++;
+	editor.cx = 0;
+}
+
+/** 
  *	editorRowInsertChar
  * 
  *	@param row editor row
@@ -1068,7 +1102,7 @@ void editorInsertChar(int ch)
 {
 	if (editor.cy == editor.numrows)
 	{
-		editorAppendRow("", 0);
+		editorInsertRow(editor.numrows, "", 0);
 	}
 	editorRowInsertChar(&editor.row[editor.cy], editor.cx, ch);
 	editor.cx++;	
