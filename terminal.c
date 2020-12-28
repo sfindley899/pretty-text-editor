@@ -22,6 +22,7 @@
 #define ABUF_INIT {NULL, 0}
 #define KILO_VERSION "0.0.1"
 #define TAB_STOP 8
+#define QUIT_TIMES 3
 
 /*** enums ***/
 enum editorKey
@@ -88,6 +89,7 @@ void editorDrawStatusBar(struct abuf *ab);
 void editorSetStatusMessage(const char * fmt, ...);
 void editorDrawMessageBar(struct abuf *ab);
 void editorRowInsertChar(erow * row, int at, int c);
+void editorDelChar(void);
 void editorInsertChar(int ch);
 char * editorRowsToString(int * buflen);
 void editorSave(void);
@@ -652,6 +654,7 @@ void editorMoveCursor(int key)
  */
 void editorProcessKeypress(void)
 {
+	static int quit_times = QUIT_TIMES;
 	int ch = editorReadKey();
 	int times;
 
@@ -666,6 +669,13 @@ void editorProcessKeypress(void)
 			}
 		case CTRL_KEY('q'):
 			{
+				if (editor.dirty  && quit_times > 0)
+				{
+					editorSetStatusMessage("WARNING!!! File has unsaved changes. " \
+					"Press Ctrl-Q %d more times to quit.",  quit_times);
+					quit_times--;
+					return;
+				}
 				write(STDOUT_FILENO, "\x1b[2J", 4);
 				write(STDOUT_FILENO, "\x1b[H", 3);
 				exit(0);
@@ -695,7 +705,11 @@ void editorProcessKeypress(void)
 		case CTRL_KEY('h'):
 		case DEL_KEY:
 		{
-			/** @todo **/
+			if (ch == DEL_KEY)
+			{
+				editorMoveCursor(ARROW_RIGHT);
+			}
+			editorDelChar();
 			break;
 		}
 		case PAGE_UP:
@@ -743,6 +757,8 @@ void editorProcessKeypress(void)
 				break;
 			}
 	}
+
+	quit_times = QUIT_TIMES;
 }
 
 /** 
@@ -1006,6 +1022,52 @@ void editorInsertChar(int ch)
 	editorRowInsertChar(&editor.row[editor.cy], editor.cx, ch);
 	editor.cx++;	
 }
+
+/** 
+ *	editorRowDelChar
+ * 
+ * 	@param row editor row
+ * 	@param at char position
+ *
+ */
+void editorRowDelChar(erow * row, int at)
+{
+	if(at < 0 || at >= row->size)
+	{
+		return;
+	}
+	else
+	{
+		memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+		row->size--;
+		editorUpdateRow(row);
+		editor.dirty++;
+	}
+}
+
+/** 
+ *	editorDelChar
+ * 
+ * 	@param none
+ *
+ */
+void editorDelChar(void)
+{
+	erow * row = &editor.row[editor.cy];
+	if (editor.cy == editor.numrows)
+	{
+		return;
+	}
+	else
+	{
+		if (editor.cx > 0)
+		{
+			editorRowDelChar(row, editor.cx - 1);
+			editor.cx--;
+		}
+	}	
+}
+
 
 /** 
  *	editorRowsToString
