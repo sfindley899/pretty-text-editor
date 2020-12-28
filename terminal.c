@@ -628,14 +628,26 @@ void editorFindCallback(char * query, int key)
  */
 void editorFind(void)
 {
-	char *query;
-
+	char *query = NULL;
+	int saved_cx = editor.cx;
+	int saved_cy = editor.cy;
+	int saved_rowoff = editor.rowoff;
+	int saved_coloff = editor.coloff;
+	
 	query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
 
 	if (query != NULL)
 	{
 		free(query);
 	}
+	else
+	{
+		editor.cx  = saved_cx
+		editor.cy  = saved_cy;
+		editor.rowoff = saved_rowoff
+		editor.coloff  = saved_coloff;
+	}
+	
 }
 
 /** 
