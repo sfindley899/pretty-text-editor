@@ -94,7 +94,7 @@ void editorDelChar(void);
 void editorInsertChar(int ch);
 char * editorRowsToString(int * buflen);
 void editorSave(void);
-char * editorPrompt(char * prompt);
+char * editorPrompt(char * prompt, void(*callback)(char *, int ));
 
 /*** functions ***/
 
@@ -557,7 +557,7 @@ void editorSave(void)
 
 	if (editor.filename == NULL)
 	{
-		editor.filename = editorPrompt("Save as: %s (ESC to cancel)");
+		editor.filename = editorPrompt("Save as: %s (ESC to cancel)", NULL);
 		if (editor.filename == NULL)
 		{
 			editorSetStatusMessage("Save aborted");
@@ -588,19 +588,19 @@ void editorSave(void)
 }
 
 /** 
- *	editorFind
+ *	editorFindCallback
  * 
- *  @param none
+ *  @param query search query
+ *  @param key character
  * 
  */
-void editorFind(void)
+void editorFindCallback(char * query, int key)
 {
 	int i;
-	char *match, *query;
+	char *match;
 	erow * row;
-	
-	query = editorPrompt("Search %s (ESC to cancel)");
-	if (query == NULL)
+
+	if (key == '\r' || key == '\x1b')
 	{
 		return;
 	}
@@ -618,8 +618,24 @@ void editorFind(void)
 			break;
 		}
 	}
+}
 
-	free(query);
+/** 
+ *	editorFind
+ * 
+ *  @param none
+ * 
+ */
+void editorFind(void)
+{
+	char *query;
+
+	query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
+
+	if (query != NULL)
+	{
+		free(query);
+	}
 }
 
 /** 
@@ -629,7 +645,7 @@ void editorFind(void)
  *
  * 	handles wasd key press
  */
-char * editorPrompt(char * prompt)
+char * editorPrompt(char * prompt, void(*callback)(char *, int ))
 {
 	size_t bufsize = 128, buflen = 0;
 	char *buf = malloc(bufsize);
@@ -652,6 +668,10 @@ char * editorPrompt(char * prompt)
 		else if (ch == '\x1b')
 		{
 			editorSetStatusMessage("");
+			if (callback)
+			{
+				callback(buf, ch);
+			}
 			free(buf);
 			return NULL;
 		}
@@ -660,6 +680,10 @@ char * editorPrompt(char * prompt)
 			if(buflen != 0)
 			{
 				editorSetStatusMessage("");
+				if (callback)
+				{
+					callback(buf, ch);
+				}
 				return buf;
 			}
 		}
@@ -675,6 +699,10 @@ char * editorPrompt(char * prompt)
 			buf[buflen] = '\0';
 		}
 		
+		if (callback)
+		{
+			callback(buf, ch);
+		}
 	}
 }
 
