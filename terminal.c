@@ -94,6 +94,7 @@ void editorDelChar(void);
 void editorInsertChar(int ch);
 char * editorRowsToString(int * buflen);
 void editorSave(void);
+char * editorPrompt(char * prompt);
 
 /*** functions ***/
 
@@ -524,6 +525,11 @@ void editorSave(void)
 	int len, fd;
 	char *buf;
 
+	if (editor.filename == NULL)
+	{
+		editor.filename = editorPrompt("Save as: %s");
+	}
+
 	if(editor.filename != NULL)
 	{
 		buf = editorRowsToString(&len);
@@ -548,6 +554,49 @@ void editorSave(void)
 	}
 }
 
+/** 
+ *	editorMoveCursor
+ * 
+ *	@param key keypad character
+ *
+ * 	handles wasd key press
+ */
+char * editorPrompt(char * prompt)
+{
+	size_t bufsize = 128, buflen = 0;
+	char *buf = malloc(bufsize);
+	int ch;
+
+	buf[0] = '\0';
+	while (1)
+	{
+		editorSetStatusMessage(prompt, buf);
+		editorRefreshScreen();
+
+		ch = editorReadKey();
+
+		if (ch == '\r')
+		{
+			if(buflen != 0)
+			{
+				editorSetStatusMessage("");
+				return buf;
+			}
+		}
+		else if (!iscntrl(ch) && ch < 128)
+		{
+			if(buflen == bufsize - 1)
+			{
+				bufsize *= 2;
+				buf = realloc(buf, bufsize);
+			}
+
+			buf[buflen++] = ch;
+			buf[buflen] = '\0';
+		}
+		
+	}
+}
 
 /** 
  *	editorMoveCursor
