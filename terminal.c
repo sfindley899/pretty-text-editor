@@ -527,31 +527,34 @@ void editorSave(void)
 
 	if (editor.filename == NULL)
 	{
-		editor.filename = editorPrompt("Save as: %s");
+		editor.filename = editorPrompt("Save as: %s (ESC to cancel)");
+		if (editor.filename == NULL)
+		{
+			editorSetStatusMessage("Save aborted");
+			return;
+		}
 	}
 
-	if(editor.filename != NULL)
+	buf = editorRowsToString(&len);
+	fd = open(editor.filename, O_RDWR | O_CREAT, 0644);
+	if(fd != -1)
 	{
-		buf = editorRowsToString(&len);
-		fd = open(editor.filename, O_RDWR | O_CREAT, 0644);
-		if(fd != -1)
+		if (ftruncate(fd, len) != -1)
 		{
-			if (ftruncate(fd, len) != -1)
+			if (write(fd, buf, len) == len)
 			{
-				if (write(fd, buf, len) == len)
-				{
-					close(fd);
-					free(buf);
-					editor.dirty = 0;
-			        editorSetStatusMessage("%d bytes written to disk", len);
-					return;
-				}
+				close(fd);
+				free(buf);
+				editor.dirty = 0;
+				editorSetStatusMessage("%d bytes written to disk", len);
+				return;
 			}
-			close(fd);
 		}
-		free(buf);
-	    editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+		close(fd);
 	}
+	free(buf);
+	editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+	
 }
 
 /** 
@@ -574,8 +577,20 @@ char * editorPrompt(char * prompt)
 		editorRefreshScreen();
 
 		ch = editorReadKey();
-
-		if (ch == '\r')
+		if(ch == DEL_KEY || ch == CTRL_KEY('h') || ch == BACKSPACE)
+		{
+			if(buflen != 0)
+			{
+				buf[--buflen] = '\0';
+			}
+		}
+		else if (ch == '\x1b')
+		{
+			editorSetStatusMessage("");
+			free(buf);
+			return NULL;
+		}
+		else if (ch == '\r')
 		{
 			if(buflen != 0)
 			{
