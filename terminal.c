@@ -62,6 +62,7 @@ struct editorConfig
 	int screenrows;
 	int screencols;
 	int numrows;
+	int dirty;
 	char statusmsg[80];
 	time_t statusmsg_timestamp;
 	erow * row;	
@@ -201,6 +202,7 @@ void initEditor(void)
 	editor.coloff = 0;
 	editor.rowoff = 0;
 	editor.numrows = 0;
+	editor.dirty = 0;
 	editor.row = NULL;
 	editor.filename = NULL;
 	editor.statusmsg[0] = '\0';
@@ -225,8 +227,9 @@ void editorDrawStatusBar(struct abuf *ab)
 	char status[80], rstatus[80];
 
 	abAppend(ab, "\x1b[7m", 4);
-	len = snprintf(status, sizeof(status), "%.20s - %d lines", \
-			(editor.filename != NULL)? editor.filename : "[Untitled]", editor.numrows);
+	len = snprintf(status, sizeof(status), "%.20s - %d lines %s", \
+			(editor.filename != NULL) ? editor.filename : "[Untitled]", editor.numrows \
+			,editor.dirty ? "(modified)" : "");
 	rlen = snprintf(rstatus, sizeof(rstatus), "%d/%d", \
 			editor.cy + 1, editor.numrows);
 	if (len > editor.screencols)
@@ -504,6 +507,7 @@ void editorOpen(char *filename)
 
 	free(line);
 	fclose(fp);
+	editor.dirty = 0;
 }
 
 /** 
@@ -529,6 +533,7 @@ void editorSave(void)
 				{
 					close(fd);
 					free(buf);
+					editor.dirty = 0;
 			        editorSetStatusMessage("%d bytes written to disk", len);
 					return;
 				}
@@ -960,6 +965,7 @@ void editorAppendRow(char *string, size_t len)
 	editorUpdateRow(&editor.row[at]);
 
 	editor.numrows++;
+	editor.dirty++;
 }
 
 /** 
@@ -972,7 +978,7 @@ void editorAppendRow(char *string, size_t len)
  */
 void editorRowInsertChar(erow * row, int at, int ch)
 {
-	if (at < 0 || at < row->size)
+	if (at < 0 || at > row->size)
 	{
 		at = row->size;
 	}
@@ -982,6 +988,7 @@ void editorRowInsertChar(erow * row, int at, int ch)
 	row->size++;
 	row->chars[at] = ch;
 	editorUpdateRow(row);
+	editor.dirty++;
 }
 
 /** 
@@ -996,7 +1003,7 @@ void editorInsertChar(int ch)
 	{
 		editorAppendRow("", 0);
 	}
-	editorRowInsertChar(&editor.row[editor.cx], editor.cx, ch);
+	editorRowInsertChar(&editor.row[editor.cy], editor.cx, ch);
 	editor.cx++;	
 }
 
