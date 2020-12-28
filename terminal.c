@@ -596,23 +596,56 @@ void editorSave(void)
  */
 void editorFindCallback(char * query, int key)
 {
-	int i;
+	static int last_match = -1;
+	static int direction = 1;
+	int i, current;
 	char *match;
 	erow * row;
 
 	if (key == '\r' || key == '\x1b')
 	{
+		last_match = -1;
+		direction = 1;
 		return;
 	}
+	else if (key == ARROW_DOWN || ARROW_RIGHT)
+	{
+		direction = 1;
+	}
+	else if (key == ARROW_UP || ARROW_LEFT)
+	{
+		direction = -1;
+	}
+	else
+	{
+		last_match = -1;
+		direction = 1;	
+	}
 
+	if (last_match == -1)
+	{
+		direction = 1;
+	}
+	current = last_match;
 	for (i = 0; i < editor.numrows; i++)
 	{
-		row = &editor.row[i];
+		current += direction;
+		if (current == -1) 
+		{
+			current = editor.numrows - 1;
+		}
+		else if (current == editor.numrows)
+		{
+			current = 0;
+		}
+		
+		row = &editor.row[current];
 		match = strstr(row->render, query);
 
 		if(match)
 		{
-			editor.cy = i;
+			last_match = current;
+			editor.cy = current;
 			editor.cx = editorRowRxToCx(row, match - row->render);
 			editor.rowoff = editor.numrows;
 			break;
@@ -634,7 +667,7 @@ void editorFind(void)
 	int saved_rowoff = editor.rowoff;
 	int saved_coloff = editor.coloff;
 	
-	query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
+	query = editorPrompt("Search: %s (ESC/Arrows/Enter)", editorFindCallback);
 
 	if (query != NULL)
 	{
@@ -642,9 +675,9 @@ void editorFind(void)
 	}
 	else
 	{
-		editor.cx  = saved_cx
+		editor.cx  = saved_cx;
 		editor.cy  = saved_cy;
-		editor.rowoff = saved_rowoff
+		editor.rowoff = saved_rowoff;
 		editor.coloff  = saved_coloff;
 	}
 	
