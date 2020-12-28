@@ -607,9 +607,19 @@ void editorFindCallback(char * query, int key)
 {
 	static int last_match = -1;
 	static int direction = 1;
+	static int saved_hl_line;
+	static char * saved_hl = NULL;
+
 	int i, current;
 	char *match;
 	erow * row;
+
+	if (saved_hl)
+	{
+		memcpy(editor.row[saved_hl_line].hl, saved_hl, editor.row[saved_hl_line].rsize);
+		free(saved_hl);
+		saved_hl = NULL;
+	}
 
 	if (key == '\r' || key == '\x1b')
 	{
@@ -657,6 +667,10 @@ void editorFindCallback(char * query, int key)
 			editor.cy = current;
 			editor.cx = editorRowRxToCx(row, match - row->render);
 			editor.rowoff = editor.numrows;
+
+			saved_hl_line = current;
+			saved_hl = malloc(row->rsize);
+			memcpy(saved_hl, row->hl, row->rsize);
 			memset(&row->hl[match - row->render], HL_MATCH, strlen(query));
 			break;
 		}
@@ -1210,6 +1224,17 @@ int getCursorPosition(int *rows, int *cols)
 }
 
 /** 
+ *	is_separator
+ *
+ *	@param ch character
+ *
+ */
+int is_separator(int ch)
+{
+	return isspace(ch) || ch == '\0' || strchr(",.()+-/*=~<>[];\"", ch) != NULL;
+}
+
+/** 
  *	editorUpdateSyntax
  *
  *	@param row editor row
@@ -1218,16 +1243,36 @@ int getCursorPosition(int *rows, int *cols)
  */
 void editorUpdateSyntax(erow * row)
 {
-	int i;
+	int i = 0, prev_separator = 1;
+	unsigned char prev_hl;
+	char ch;
 	row->hl = realloc(row->hl, row->rsize);
 	memset(row->hl, HL_NORMAL, row->rsize);
 
-	for(i = 0; i < row->rsize; i++)
+	while (i < row->rsize)
 	{
-		if(isdigit(row->render[i]))
+		ch = row->render[i];
+
+		if (i > 0)
+		{
+			prev_hl = row->hl[i - 1];
+		}
+		else
+		{
+			prev_hl = HL_NORMAL;
+		}
+		
+		if((isdigit(ch) && (prev_separator || prev_hl == HL_NUMBER)) || 
+			(ch == '.' && prev_hl == HL_NUMBER))
 		{
 			row->hl[i] = HL_NUMBER;
+			i++;
+			prev_separator = 0;
+			continue;
 		}
+
+		prev_separator = is_separator(ch);
+		i++;
 	}
 }
 
