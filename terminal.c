@@ -985,6 +985,57 @@ void editorAppendRow(char *string, size_t len)
 }
 
 /** 
+ *	editorRowAppendString
+ * 
+ *	@param row editor row
+ * 	@param string string 
+ *  @param len string length
+ *
+ */
+void editorRowAppendString (erow * row, char * string, size_t len)
+{
+	row->chars = realloc(row->chars, row->size + len + 1);
+	memcpy(&row->chars[row->size], string, len);
+	row->size += len;
+	row->chars[row->size] = '\0';
+	editorUpdateRow(row);
+	editor.dirty++;
+}
+
+/** 
+ *	editorFreeRow
+ * 
+ *	@param row editor row
+ *
+ */
+void editorFreeRow(erow * row)
+{
+	free(row->render);
+	free(row->chars);
+}
+
+/** 
+ *	editorDelRow
+ * 
+ *	@param at editor row character position
+ *
+ */
+void editorDelRow(int at)
+{
+	if (at < 0 || at >= editor.numrows)
+	{
+		return;
+	}
+	else
+	{
+		editorFreeRow(&editor.row[at]);
+		memmove(&editor.row[at], &editor.row[at + 1], sizeof(erow) * (editor.numrows - at - 1));
+		editor.numrows--;
+		editor.dirty++;
+	}
+}
+
+/** 
  *	editorRowInsertChar
  * 
  *	@param row editor row
@@ -1058,12 +1109,23 @@ void editorDelChar(void)
 	{
 		return;
 	}
+	else if (editor.cx == 0 &&  editor.cy == 0)
+	{
+		return;
+	}
 	else
 	{
 		if (editor.cx > 0)
 		{
 			editorRowDelChar(row, editor.cx - 1);
 			editor.cx--;
+		}
+		else
+		{
+			editor.cx = editor.row[editor.cy - 1].size;
+			editorRowAppendString(&editor.row[editor.cy - 1], row->chars, row->size);
+			editorDelRow(editor.cy);
+			editor.cy--;
 		}
 	}	
 }
