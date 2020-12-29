@@ -44,6 +44,7 @@ enum editorKey
 
 enum editorHighlight {
 	HL_NORMAL = 0,
+		HL_COMMENT,
 		HL_STRING,
 		HL_NUMBER,
 		HL_MATCH
@@ -87,6 +88,7 @@ struct editorSyntax
 {
 	char * filetype;
 	char ** filematch;
+	char * singleline_comment_start;
 	int flags;
 };
 
@@ -99,6 +101,7 @@ struct  editorSyntax HLDB[] =
 	{
 		"c",
 		C_HL_extensions,
+		"//",
 		HIGHLIGHT_NUMBERS | HIGHLIGHT_STRINGS
 	},
 };
@@ -1270,9 +1273,11 @@ int is_separator(int ch)
  */
 void editorUpdateSyntax(erow * row)
 {
-	int i = 0, prev_separator = 1, in_string = 0;
+	int i = 0, prev_separator = 1, in_string = 0, scs_len = 0;
 	unsigned char prev_hl;
 	char ch;
+	char * scs;
+
 	row->hl = realloc(row->hl, row->rsize);
 	memset(row->hl, HL_NORMAL, row->rsize);
 
@@ -1282,6 +1287,11 @@ void editorUpdateSyntax(erow * row)
 	}
 	else
 	{
+		scs = editor.syntax->singleline_comment_start;
+		if (scs != NULL)
+		{
+			scs_len = strlen(scs);
+		}
 		while (i < row->rsize)
 		{
 			ch = row->render[i];
@@ -1295,11 +1305,25 @@ void editorUpdateSyntax(erow * row)
 				prev_hl = HL_NORMAL;
 			}
 			
+			if (scs_len && !in_string)
+			{
+				if(!strncmp(&row->render[i], scs, scs_len))
+				{
+					memset(&row->hl[i], HL_COMMENT, row->rsize - i);
+					break;
+				}
+			}
 			if (editor.syntax->flags & HIGHLIGHT_STRINGS)
 			{
 				if (in_string)
 				{
 					row->hl[i] = HL_STRING;
+					if (ch == '\\' && i + 1 < row->rsize)
+					{
+						row->hl[i + 1] = HL_STRING;
+						i += 2;
+						continue;
+					}					
 					if (ch == in_string)
 					{
 						in_string = 0;
@@ -1633,6 +1657,10 @@ int editorSyntaxToColor(int hl)
 {
 	switch (hl)
 	{
+		case HL_COMMENT:
+			{
+				return 36;
+			}
 		case HL_STRING:
 			{
 				return 35;
