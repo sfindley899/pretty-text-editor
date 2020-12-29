@@ -1101,6 +1101,12 @@ void editorDrawRows(struct abuf *ab)
 					abAppend(ab, "\x1b[7m", 4);
 					abAppend(ab, &symbol, 1);
 					abAppend(ab, "\x1b[m", 3);
+					
+					if (current_color != - 1)
+					{
+						clen = snprintf(buf, sizeof(buf), "\x1b[%dm", current_color);
+						abAppend(ab, buf, clen);
+					}
 				}
 				else if (hl[j] == HL_NORMAL)
 				{
