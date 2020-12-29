@@ -45,6 +45,7 @@ enum editorKey
 enum editorHighlight {
 	HL_NORMAL = 0,
 		HL_COMMENT,
+		HL_MULTI_COMMENT,
 		HL_KEYWORD1,
 		HL_KEYWORD2,
 		HL_STRING,
@@ -92,6 +93,8 @@ struct editorSyntax
 	char ** filematch;
 	char ** keywords;
 	char * singleline_comment_start;
+	char * multi_comment_start;
+	char * multi_comment_end;
 	int flags;
 };
 
@@ -113,7 +116,7 @@ struct  editorSyntax HLDB[] =
 		"c",
 		C_HL_extensions,
 		C_HL_keywords,
-		"//",
+		"//", "/*", "*/", 
 		HIGHLIGHT_NUMBERS | HIGHLIGHT_STRINGS
 	},
 };
@@ -1305,11 +1308,12 @@ int is_separator(int ch)
  */
 void editorUpdateSyntax(erow * row)
 {
-	int i = 0, j = 0, prev_separator = 1, in_string = 0, scs_len = 0;
+	int i = 0, j = 0, prev_separator = 1, in_string = 0, in_comment = 0;
+	int scs_len = 0, mce_len = 0, mcs_len = 0;
 	int keyword2, keyword_len;
 	unsigned char prev_hl;
 	char ch;
-	char * scs;
+	char * scs, * mcs, * mce;
 	char ** keywords;
 
 	row->hl = realloc(row->hl, row->rsize);
@@ -1323,10 +1327,22 @@ void editorUpdateSyntax(erow * row)
 	{
 		keywords = editor.syntax->keywords;
 		scs = editor.syntax->singleline_comment_start;
+		mcs = editor.syntax->multi_comment_start;
+		mce = editor.syntax->multi_comment_end;
+
 		if (scs != NULL)
 		{
 			scs_len = strlen(scs);
 		}
+		if (mcs != NULL)
+		{
+			mcs_len = strlen(mcs);
+		}
+		if (mce != NULL)
+		{
+			mce_len = strlen(mce);
+		}
+
 		while (i < row->rsize)
 		{
 			ch = row->render[i];
@@ -1346,6 +1362,34 @@ void editorUpdateSyntax(erow * row)
 				{
 					memset(&row->hl[i], HL_COMMENT, row->rsize - i);
 					break;
+				}
+			}
+
+			if (mcs_len && mce_len && (in_string == 0))
+			{
+				if (in_comment != 0)
+				{
+					row->hl[i] = HL_MULTI_COMMENT;
+					if(strncmp(&row->render[i], mce, mce_len) == 0)
+					{
+						memset(&row->hl[i], HL_MULTI_COMMENT, mce_len);
+						i += mce_len;
+						in_comment = 0;
+						prev_separator = 1;
+						continue;
+					}
+					else
+					{
+						i++;
+						continue;
+					}
+				}
+				else if (strncmp(&row->render[i], mcs, mcs_len) == 0)
+				{
+					memset(&row->hl[i], HL_MULTI_COMMENT, mcs_len);
+					i += mcs_len;
+					in_comment = 1;
+					continue;
 				}
 			}
 			if (editor.syntax->flags & HIGHLIGHT_STRINGS)
@@ -1719,6 +1763,7 @@ int editorSyntaxToColor(int hl)
 	switch (hl)
 	{
 		case HL_COMMENT:
+		case HL_MULTI_COMMENT:
 			{
 				return 36;
 			}
