@@ -1336,7 +1336,8 @@ bool is_separator(int ch)
 void editorUpdateSyntax(erow *row)
 {
 	int i = 0, j = 0;
-	bool prev_separator = true, in_string = false, in_comment = false, changed;
+	bool prev_separator = true, in_comment = false, changed;
+	int in_string = 0;
 	int scs_len = 0, mce_len = 0, mcs_len = 0, mcs2_len = 0;
 	bool keyword2;
 	int keyword_len;
@@ -1441,7 +1442,7 @@ void editorUpdateSyntax(erow *row)
 
 			if (editor.syntax->flags &HIGHLIGHT_STRINGS)
 			{
-				if (in_string == true)
+				if (in_string != 0)
 				{
 					row->hl[i] = HL_STRING;
 					if (ch == '\\' && i + 1 < row->rsize)
@@ -1453,7 +1454,7 @@ void editorUpdateSyntax(erow *row)
 
 					if (ch == in_string)
 					{
-						in_string = false;
+						in_string = 0;
 					}
 
 					i++;
@@ -1922,7 +1923,6 @@ void editorSelectSyntaxHighlight(void)
  *	@param argc
  *	@param argv
  * 
- * `@todo: fix single quotation, double quotation
  ****/
 
 int main(int argc, char *argv[])
