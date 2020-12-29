@@ -277,7 +277,7 @@ void initEditor(void)
 /**
  *	editorDrawStatusBar
  *	
- * @param ab buffer
+ * 	@param ab buffer
  *
  */
 void editorDrawStatusBar(struct abuf *ab)
@@ -319,7 +319,7 @@ void editorDrawStatusBar(struct abuf *ab)
 /**
  *	editorDrawMessageBar
  *	
- * @param ab buffer
+ * 	@param ab buffer
  *
  */
 void editorDrawMessageBar(struct abuf *ab)
@@ -341,7 +341,7 @@ void editorDrawMessageBar(struct abuf *ab)
 /**
  *	editorSetStatusMessage
  *	
- * @param fmt format parameters
+ * 	@param fmt format parameters
  *
  */
 void editorSetStatusMessage(const char *fmt, ...)
@@ -359,7 +359,6 @@ void editorSetStatusMessage(const char *fmt, ...)
  *	@param row editor row
  *	@param cx column position
  *
- *	@todo convert chars index to render index
  */
 int editorRowCxToRx(erow *row, int cx)
 {
@@ -384,7 +383,6 @@ int editorRowCxToRx(erow *row, int cx)
  *	@param row editor row
  *	@param rx render position
  *
- *	@todo convert render index to char index
  */
 int editorRowRxToCx(erow *row, int rx)
 {
@@ -415,7 +413,6 @@ int editorRowRxToCx(erow *row, int rx)
  *	@param none
  *
  *	Wait for single byte then return
- *	@todo handle multiple bytes
  *
  */
 int editorReadKey(void)
@@ -655,8 +652,8 @@ void editorSave(void)
 /**
  *	editorFindCallback
  * 
- * @param query search query
- * @param key character
+ * 	@param query search query
+ * 	@param key character
  *
  */
 void editorFindCallback(char *query, int key)
@@ -737,7 +734,7 @@ void editorFindCallback(char *query, int key)
 /**
  *	editorFind
  * 
- * @param none
+ * 	@param none
  *
  */
 void editorFind(void)
@@ -1046,7 +1043,6 @@ void editorProcessKeypress(void)
 		case CTRL_KEY('l'):
 		case '\x1b':
 			{
-				/**@todo **/
 				break;
 			}
 
@@ -1211,7 +1207,7 @@ void editorScroll(void)
  *
  *	@param none
  *
- *clear screen using Erase In Display
+ *	clear screen using Erase In Display
  */
 void editorRefreshScreen(void)
 {
@@ -1574,7 +1570,7 @@ void editorInsertRow(int at, char *string, size_t len)
  *
  *	@param row editor row
  *	@param string string 
- * @param len string length
+ * 	@param len string length
  *
  */
 void editorRowAppendString(erow *row, char *string, size_t len)
@@ -1629,7 +1625,7 @@ void editorDelRow(int at)
 /**
  *	editorInsertNewLine
  *
- *	@param
+ *	@param none
  *
  */
 void editorInsertNewLine(void)
@@ -1921,12 +1917,12 @@ void editorSelectSyntaxHighlight(void)
 	}
 }
 
-/***main
+/*** main
  * 
  *	@param argc
  *	@param argv
  * 
- * @todo: fix single quotation, double quotation, and multiline comments
+ * `@todo: fix single quotation, double quotation
  ****/
 
 int main(int argc, char *argv[])
