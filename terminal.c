@@ -1878,7 +1878,13 @@ void editorSelectSyntaxHighlight(void)
 	
 }
 
-/*** main ***/
+/*** main
+ * 
+ * 	@param argc
+ * 	@param argv
+ * 
+ *  @todo: fix single quotation, double quotation, and multiline comments
+ * ***/
 
 int main(int argc, char *argv[])
 {
