@@ -1045,7 +1045,7 @@ void editorDrawRows(struct abuf *ab)
 	char *ch; 
 	unsigned char *hl;
 	int filerow;
-	char buf[16];
+	char buf[16], symbol;
 
 	for (y = 0; y < editor.screenrows; y++)
 	{
@@ -1088,7 +1088,21 @@ void editorDrawRows(struct abuf *ab)
 			hl = &editor.row[filerow].hl[editor.coloff];
 			for (j = 0; j < len; j++)
 			{
-				if (hl[j] == HL_NORMAL)
+				if (iscntrl(ch[j]))
+				{
+					if(ch[j] <= 26)
+					{
+						symbol = '@' + ch[j];
+					}
+					else
+					{
+						symbol = '?';
+					}
+					abAppend(ab, "\x1b[7m", 4);
+					abAppend(ab, &symbol, 1);
+					abAppend(ab, "\x1b[m", 3);
+				}
+				else if (hl[j] == HL_NORMAL)
 				{
 					if (current_color != -1)
 					{
@@ -1285,7 +1299,8 @@ int is_separator(int ch)
  */
 void editorUpdateSyntax(erow * row)
 {
-	int i = 0, prev_separator = 1, in_string = 0, scs_len = 0;
+	int i = 0, j = 0, prev_separator = 1, in_string = 0, scs_len = 0;
+	int keyword2, keyword_len;
 	unsigned char prev_hl;
 	char ch;
 	char * scs;
@@ -1373,12 +1388,10 @@ void editorUpdateSyntax(erow * row)
 
 			if(prev_separator != 0)
 			{
-				int j;
-
 				for(j = 0; keywords[j]; j++)
 				{
-					int keyword_len = strlen(keywords[j]);
-					int keyword2 = keywords[j][keyword_len - 1] == '|';
+					keyword_len = strlen(keywords[j]);
+					keyword2 = keywords[j][keyword_len - 1] == '|';
 					if (keyword2 != 0)
 					{
 						keyword_len--;
