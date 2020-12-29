@@ -45,6 +45,8 @@ enum editorKey
 enum editorHighlight {
 	HL_NORMAL = 0,
 		HL_COMMENT,
+		HL_KEYWORD1,
+		HL_KEYWORD2,
 		HL_STRING,
 		HL_NUMBER,
 		HL_MATCH
@@ -88,6 +90,7 @@ struct editorSyntax
 {
 	char * filetype;
 	char ** filematch;
+	char ** keywords;
 	char * singleline_comment_start;
 	int flags;
 };
@@ -96,11 +99,20 @@ struct editorSyntax
 
 struct editorConfig editor;
 char * C_HL_extensions[] = {".c", ".h", ".cpp", NULL};
+char * C_HL_keywords [] = 
+{
+	"switch", "if", "while", "for", "break", "continue", "return", "else", 
+	"struct", "union", "typedef", "static", "enum", "class", "case",
+	"int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|",
+	"void|", NULL
+};
+
 struct  editorSyntax HLDB[] = 
 {
 	{
 		"c",
 		C_HL_extensions,
+		C_HL_keywords,
 		"//",
 		HIGHLIGHT_NUMBERS | HIGHLIGHT_STRINGS
 	},
@@ -1277,6 +1289,7 @@ void editorUpdateSyntax(erow * row)
 	unsigned char prev_hl;
 	char ch;
 	char * scs;
+	char ** keywords;
 
 	row->hl = realloc(row->hl, row->rsize);
 	memset(row->hl, HL_NORMAL, row->rsize);
@@ -1287,6 +1300,7 @@ void editorUpdateSyntax(erow * row)
 	}
 	else
 	{
+		keywords = editor.syntax->keywords;
 		scs = editor.syntax->singleline_comment_start;
 		if (scs != NULL)
 		{
@@ -1352,6 +1366,34 @@ void editorUpdateSyntax(erow * row)
 				{
 					row->hl[i] = HL_NUMBER;
 					i++;
+					prev_separator = 0;
+					continue;
+				}
+			}
+
+			if(prev_separator != 0)
+			{
+				int j;
+
+				for(j = 0; keywords[j]; j++)
+				{
+					int keyword_len = strlen(keywords[j]);
+					int keyword2 = keywords[j][keyword_len - 1] == '|';
+					if (keyword2 != 0)
+					{
+						keyword_len--;
+					}
+
+					if(!strncmp(&row->render[i], keywords[j], keyword_len) &&
+						is_separator(row->render[i + keyword_len]))
+					{
+						memset(&row->hl[i], (keyword2 != 0) ? HL_KEYWORD2 : HL_KEYWORD1, keyword_len);
+						i += keyword_len;
+						break;
+					}
+				}
+				if(keywords[j] != NULL)
+				{
 					prev_separator = 0;
 					continue;
 				}
@@ -1664,6 +1706,14 @@ int editorSyntaxToColor(int hl)
 		case HL_STRING:
 			{
 				return 35;
+			}
+		case HL_KEYWORD1:
+			{
+				return 33;
+			}
+		case HL_KEYWORD2:
+			{
+				return 32;
 			}
 		case HL_NUMBER:
 			{
